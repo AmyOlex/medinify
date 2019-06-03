@@ -29,7 +29,7 @@ class CharCnnDataset(Dataset):
         dataset = ReviewClassifier().create_dataset(dataset_file)
         for review in dataset:
             comment_text = ' '.join(list(review[0].keys()))
-            if len(list(comment_text)) > 1014:
+            if 1 < len(list(comment_text)) > 1014:
                 continue
             comment_rep = self.encode_comment(comment_text)
 
