@@ -14,6 +14,11 @@
 !test-reviews.csv
 !test-urls.csv
 !test-drug-names.csv
+!cancer_drugs.csv
+!common_drugs.csv
+!depression_drugs.csv
+!diabetes_drugs.csv
+!heart_drugs.csv
 !test_nb_model.pickle
 !test_rf_model.pickle
 !test_svm_model.pickle

@@ -7,6 +7,9 @@ import torch
 from torch.utils.data import DataLoader
 from torch import nn
 
+# Evaluation
+from sklearn.model_selection import StratifiedKFold
+
 # Misc
 import numpy as np
 
@@ -27,8 +30,8 @@ class CharCNN():
             total_tp, total_tn, total_fp, total_fn = 0, 0, 0, 0
 
             for j, batch in enumerate(train_loader):
-
-                print('On batch {} of {}'.format(j, len(train_loader)))
+                if (j + 1) % 25 == 0:
+                    print('On batch {} of {}'.format(j + 1, len(train_loader)))
 
                 optimizer.zero_grad()
 
@@ -45,8 +48,94 @@ class CharCNN():
 
                 running_loss += loss.item()
 
+            print(total_tp, total_tn, total_fp, total_fn)
             accuracy = ((total_tp + total_tn) * 1.0) / (total_tp + total_tn + total_fp + total_fn) * 100
             print('Epoch Loss: {}\nEpoch Accuracy: {}%\n'.format(running_loss, accuracy))
+
+    def evaluate_k_fold(self, dataset, n_epochs, folds):
+
+        comments = [review['comment'] for review in dataset.dataset]
+        ratings = [review['rating'] for review in dataset.dataset]
+        skf = StratifiedKFold(n_splits=folds)
+
+        total_accuracy = 0
+        total_precision = 0
+        total_recall = 0
+
+        num_fold = 1
+        for train, test in skf.split(comments, ratings):
+            print('Fold #' + str(num_fold))
+            train_data = [dataset[x] for x in train]
+            test_data = [dataset[x] for x in test]
+            train_loader = self.get_data_loader(train_data, 25)
+            test_loader = self.get_data_loader(test_data, 25)
+
+            network = CharCnnNet()
+
+            self.train(network, train_loader, n_epochs)
+            fold_accuracy, fold_precision, fold_recall = self.evaluate(test_loader, network)
+            total_accuracy += fold_accuracy
+            total_precision += fold_precision
+            total_recall += fold_recall
+
+            num_fold += 1
+
+        average_accuracy = total_accuracy / folds
+        average_precision = total_precision / folds
+        average_recall = total_recall / folds
+        print('Average Accuracy: ' + str(average_accuracy))
+        print('Average Precision: ' + str(average_precision))
+        print('Average Recall: ' + str(average_recall))
+
+    def evaluate(self, valid_loader, network):
+        """
+        Evaluates the accuracy of a model with validation data
+        :param valid_loader: validation data iterator
+        """
+        network.eval()
+        criterion = nn.CrossEntropyLoss()
+
+        total_loss = 0
+        total_tp = 0
+        total_tn = 0
+        total_fp = 0
+        total_fn = 0
+        calculated = 0
+
+        num_sample = 1
+
+        with torch.no_grad():
+
+            for sample in valid_loader:
+
+                preds = network(sample)
+                loss = criterion(preds.to(torch.float64), sample['rating'].to(torch.int64))
+
+                tp, tn, fp, fn = self.get_eval_stats(preds, sample['rating'])
+
+                total_tp += tp
+                total_tn += tn
+                total_fp += fp
+                total_fn += fn
+
+                calculated += 1
+                total_loss += loss
+
+                num_sample = num_sample + 1
+
+            average_accuracy = ((total_tp + total_tn) * 1.0 / (total_tp + total_tn + total_fp + total_fn)) * 100
+            if total_tp + total_fp != 0:
+                average_precision = (total_tp * 1.0 / (total_tp + total_fp)) * 100
+            else:
+                average_precision = 0
+            average_recall = (total_tp * 1.0 / (total_tp + total_fn)) * 100
+            print('Evaluation Metrics:')
+            print('\nTotal Loss: {}\nAverage Accuracy: {}%\nAverage Precision: {}%\nAverage Recall: {}%'.format(
+                total_loss / len(valid_loader), average_accuracy, average_precision, average_recall))
+            print('True Positive: {}\tTrue Negative: {}\tFalse Positive: {}\tFalse Negative: {}\n'.format(
+                total_tp, total_tn, total_fp, total_fn))
+
+        return average_accuracy, average_precision, average_recall
 
     def get_eval_stats(self, predictions, ratings):
 
