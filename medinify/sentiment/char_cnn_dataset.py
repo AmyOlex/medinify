@@ -29,8 +29,9 @@ class CharCnnDataset(Dataset):
         dataset = ReviewClassifier().create_dataset(dataset_file)
         for review in dataset:
             comment_text = ' '.join(list(review[0].keys()))
-            if 1 < len(list(comment_text)) > 1014:
+            if len(list(comment_text)) > 1014 or len(comment_text) < 1:
                 continue
+
             comment_rep = self.encode_comment(comment_text)
 
             rating = review[1]
@@ -69,6 +70,9 @@ class CharCnnDataset(Dataset):
             self.load_one_hot_encoder()
 
         characters = array(list(comment)).reshape(len(comment), 1)
+        if characters.shape == (0, 1):
+            print(characters)
+            exit()
         encoded = self.onehot_encoder.transform(characters)
         return encoded
 
