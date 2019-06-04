@@ -1,9 +1,7 @@
 
 # Preprocessing
-import numpy, sys
-from numpy import array
-from sklearn.preprocessing import OneHotEncoder
-from string import printable
+import json
+import csv
 
 # Pytorch
 import torch
@@ -19,67 +17,69 @@ class CharCnnDataset(Dataset):
     (As opposed to word level)
     """
 
-    dataset = []
-    onehot_encoder = None
+    comments = []
+    ratings = []
+    alphabet = None
+    max_len = 0
+    processing = True
 
-    def __init__(self, dataset_file):
+    def __init__(self, dataset_file, alphabet_file, seq_max_len, use_medinify_processing=True):
         """
         :param dataset_file: CSV dataset file
         """
-        dataset = ReviewClassifier().create_dataset(dataset_file)
-        for review in dataset:
-            comment_text = ' '.join(list(review[0].keys()))
-            if len(list(comment_text)) > 1014 or len(comment_text) < 1:
-                continue
+        self.max_len = seq_max_len
+        with open(alphabet_file, 'r') as alpha:
+            self.alphabet = ''.join(json.load(alpha))
+        self.processing = use_medinify_processing
+        self.load_data(dataset_file)
 
-            comment_rep = self.encode_comment(comment_text)
+    def load_data(self, file):
 
-            rating = review[1]
-            rating_rep = None
-            if rating == 'pos':
-                rating_rep = torch.tensor(1)
-            elif rating == 'neg':
-                rating_rep = torch.tensor(0)
+        if self.processing:
+            dataset = ReviewClassifier().create_dataset(file)
+            for review in dataset:
+                comment = ' '.join(list(review[0].keys()))
+                rating = 0
+                if review[1] == 'pos':
+                    rating = 1
 
-            self.dataset.append({'comment': comment_text, 'comment_rep': comment_rep,
-                                 'rating': rating, 'rating_rep': rating_rep})
+                self.comments.append(comment)
+                self.ratings.append(rating)
 
-    def load_one_hot_encoder(self):
-        """
-        loads onehot_encoder for character vocabulary (ASCCI printables)
-        """
-        numpy.set_printoptions(threshold=sys.maxsize)
+        else:
+            with open(file, 'r') as data:
+                reader = csv.DictReader(data)
+                for row in reader:
+                    if row['comment'] == '' or row['rating'] == 3:
+                        continue
+                    self.comments.append(row['comment'].lower())
+                    if row['rating'] in ['1', '2']:
+                        self.ratings.append(0)
+                    else:
+                        self.ratings.append(1)
 
-        char_vocab = [x for x in printable]
-        values = array(char_vocab).reshape(len(char_vocab), 1)
-
-        self.onehot_encoder = OneHotEncoder(sparse=False, categories='auto',
-                                            handle_unknown='ignore', dtype=numpy.double)
-        self.onehot_encoder.fit_transform(values)
-
-    def encode_comment(self, comment):
+    def encode_data(self, index):
         """
         Transforms string comment into one-hot encoded torch tensor
         :param comment: comment string
         :return: one-hot encoder torch tensor
         """
 
-        torch.set_printoptions(threshold=5000)
-
-        if not self.onehot_encoder:
-            self.load_one_hot_encoder()
-
-        characters = array(list(comment)).reshape(len(comment), 1)
-        if characters.shape == (0, 1):
-            print(characters)
-            exit()
-        encoded = self.onehot_encoder.transform(characters)
-        return encoded
+        comment_tensor = torch.zeros(len(self.alphabet), self.max_len)
+        text = self.comments[index]
+        for i, char in enumerate(text[::1]):
+            if i >= self.max_len:
+                break
+            char_index = self.alphabet.find(char)
+            if char_index != -1:
+                comment_tensor[char_index][i] = 1.0
+        return comment_tensor
 
     def __len__(self):
-        return len(self.dataset)
+        return len(self.comments)
 
     def __getitem__(self, index):
-        sample = self.dataset[index]
-        data = {'comment': sample['comment_rep'], 'rating': sample['rating_rep']}
-        return data
+        comment = self.encode_data(index)
+        rating = self.ratings[index]
+        return {'comment': comment, 'rating': rating}
+

@@ -1,17 +1,16 @@
 
 # Medinify
-from medinify.sentiment import CharCnnDataset, CharCnnNet
+from medinify.sentiment import CharCnnNet
 
 # Pytorch
 import torch
 from torch.utils.data import DataLoader
 from torch import nn
+import torch.nn.functional as F
 
 # Evaluation
 from sklearn.model_selection import StratifiedKFold
 
-# Misc
-import numpy as np
 
 class CharCNN():
     """
@@ -21,36 +20,45 @@ class CharCNN():
 
     def train(self, network, train_loader, n_epochs):
 
-        optimizer = torch.optim.SGD(network.parameters(), lr=0.01, momentum=0.9)
-        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
 
-        for i, epoch in enumerate(range(n_epochs)):
-            print('Beginning Epoch {}'.format(i + 1))
-            running_loss = 0
-            total_tp, total_tn, total_fp, total_fn = 0, 0, 0, 0
+        network.train()
 
-            for j, batch in enumerate(train_loader):
-                if (j + 1) % 25 == 0:
-                    print('On batch {} of {}'.format(j + 1, len(train_loader)))
-
+        num_epoch = 1
+        for epoch in range(n_epochs):
+            print('Beginning Epoch {}'.format(num_epoch))
+            batch_num = 1
+            epoch_accuracies = []
+            epoch_loss = 0
+            for batch in train_loader:
+                comments = batch['comment']
+                ratings = batch['rating']
+                logit = network(comments)
+                loss = F.nll_loss(logit, ratings)
+                epoch_loss += loss.item()
                 optimizer.zero_grad()
-
-                preds = network(batch)
-                tp, tn, fp, fn = self.get_eval_stats(preds, batch['rating'])
-                total_tp += tp
-                total_tn += tn
-                total_fp += fp
-                total_fn += fn
-
-                loss = criterion(preds.to(torch.float64), batch['rating'].to(torch.int64))
                 loss.backward()
+                torch.nn.utils.clip_grad_norm_(network.parameters(), 5)
                 optimizer.step()
 
-                running_loss += loss.item()
+                # get the max along the 1st dim, [1] is the indices (0 or 1, pos or neg)
+                if batch_num % 25 == 0:
+                    print('On batch {} of {}'.format(batch_num, len(train_loader)))
+                    print('Predictions:\t{}'.format(torch.max(logit, 1)[1].numpy()))
+                    print('Targets:\t{}'.format(ratings.numpy()))
+                    num_correct = torch.eq(ratings.to(torch.int64), torch.max(logit, 1)[1]).sum().item()
+                    batch_accuracy = (num_correct * 1.0 / ratings.shape[0])
+                    epoch_accuracies.append(batch_accuracy)
+                    print('Batch Accuracy: {}%'.format(batch_accuracy * 100))
 
-            print(total_tp, total_tn, total_fp, total_fn)
-            accuracy = ((total_tp + total_tn) * 1.0) / (total_tp + total_tn + total_fp + total_fn) * 100
-            print('Epoch Loss: {}\nEpoch Accuracy: {}%\n'.format(running_loss, accuracy))
+                batch_num += 1
+
+            epoch_accuracy = (sum(epoch_accuracies) / len(epoch_accuracies)) * 100
+            average_loss = epoch_loss / len(train_loader)
+            print('\nEpoch Accuracy: {}%'.format(epoch_accuracy))
+            print('Average Loss: {}'.format(average_loss))
+
+            num_epoch += 1
 
     def evaluate_k_fold(self, dataset, n_epochs, folds):
 
@@ -93,7 +101,7 @@ class CharCNN():
         :param valid_loader: validation data iterator
         """
         network.eval()
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.BCEWithLogitsLoss()
 
         total_loss = 0
         total_tp = 0
@@ -109,7 +117,7 @@ class CharCNN():
             for sample in valid_loader:
 
                 preds = network(sample)
-                loss = criterion(preds.to(torch.float64), sample['rating'].to(torch.int64))
+                loss = criterion(preds, sample['rating'])
 
                 tp, tn, fp, fn = self.get_eval_stats(preds, sample['rating'])
 
@@ -154,32 +162,8 @@ class CharCNN():
                 fn += 1
         return tp, tn, fp, fn
 
-    def get_data_loader(self, char_dataset, batch_size):
-        """
-        given a dataset, returns an iterator to feed data into network
-        :param char_dataset: dataset
-        :param batch_size: batch size
-        :return: dataloader
-        """
+    @staticmethod
+    def get_data_loader(char_dataset, batch_size):
 
-        return DataLoader(dataset=char_dataset, batch_size=batch_size,
-                          shuffle=True, collate_fn=self.collate_fn)
-
-    def collate_fn(self, batch):
-        """
-        Overrides pytorch collate fn to handle variable length data
-        :param batch: batch of data from dataloader
-        :return: collated batch
-        """
-
-        data = np.array([review['comment'] for review in batch])
-        sizes = np.array([comment.shape[0] for comment in data])
-        maxlen = np.amax(sizes)
-        padded_data = np.array([np.pad(comment, ((0, 1014 - comment.shape[0]), (0, 0)), 'constant', )
-                                for comment in data])
-        # maxlen - comment.shape[0])
-
-        target = np.array([review['rating'] for review in batch])
-        return {'comment': torch.tensor(padded_data, dtype=torch.float64),
-                'rating': torch.tensor(target, dtype=torch.float64)}
+        return DataLoader(char_dataset, batch_size=batch_size)
 

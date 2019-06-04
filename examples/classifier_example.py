@@ -2,7 +2,7 @@
 Examples for how to use the Medinify package
 """
 
-from medinify.sentiment import ReviewClassifier, CharCNN, CharCnnDataset
+from medinify.sentiment import ReviewClassifier, CharCNN, CharCnnDataset, CharCnnNet
 import sys
 
 def main():
@@ -18,10 +18,13 @@ def main():
 
     data_file = sys.argv[1]
 
-    dataset = CharCnnDataset(data_file)
+    dataset = CharCnnDataset(data_file, 'examples/alphabet.json', 1014, use_medinify_processing=False)
+    loader = CharCNN.get_data_loader(dataset, 25)
 
+    network = CharCnnNet()
     sent = CharCNN()
-    sent.evaluate_k_fold(dataset=dataset, n_epochs=10, folds=5)
+
+    sent.train(network, train_loader=loader, n_epochs=10)
 
 if __name__ == "__main__":
     main()
