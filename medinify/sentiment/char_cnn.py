@@ -18,7 +18,7 @@ class CharCNN():
     pytorch character-based sentiment analysis CNNs
     """
 
-    def train(self, network, train_loader, n_epochs):
+    def train(self, network, train_loader, n_epochs, valid_loader=None):
 
         optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
 
@@ -58,12 +58,55 @@ class CharCNN():
             print('\nEpoch Accuracy: {}%'.format(epoch_accuracy))
             print('Average Loss: {}'.format(average_loss))
 
+            if valid_loader:
+                self.evaluate(network, valid_loader)
+
             num_epoch += 1
+
+    def evaluate(self, network, valid_loader):
+
+        network.eval()
+
+        total_loss = 0
+        accuracies = []
+        total_tp = 0
+        total_fp = 0
+        total_fn = 0
+
+        for batch in valid_loader:
+            comments = batch['comment']
+            ratings = batch['rating']
+            logits = network(comments)
+            loss = F.nll_loss(logits, ratings)
+            total_loss += loss.item()
+
+            preds = torch.max(logits, 1)[1]
+
+            num_correct = torch.eq(preds, ratings).sum().item()
+            batch_accuracy = num_correct * 1.0 / ratings.shape[0]
+            accuracies.append(batch_accuracy)
+
+            for i, pred in enumerate(preds):
+                if pred == 1 and ratings[i] == 1:
+                    total_tp += 1
+                elif pred == 1 and ratings[i] == 0:
+                    total_fp += 1
+                elif pred == 0 and ratings[i] == 1:
+                    total_fn += 1
+
+        total_accuracy = sum(accuracies) / len(accuracies) * 100
+        precision = (total_tp * 1.0) / (total_tp + total_fp) * 100
+        recall = (total_tp * 1.0) / (total_tp + total_fn) * 100
+
+        print('\nEvaluation Metrics:\n\nAverage Accuracy: {}%\nPrecision: {}%\nRecall: {}%'.
+              format(total_accuracy, precision, recall))
+
+        return total_accuracy, precision, recall
 
     def evaluate_k_fold(self, dataset, n_epochs, folds):
 
-        comments = [review['comment'] for review in dataset.dataset]
-        ratings = [review['rating'] for review in dataset.dataset]
+        comments = [review for review in dataset.comments]
+        ratings = [review for review in dataset.ratings]
         skf = StratifiedKFold(n_splits=folds)
 
         total_accuracy = 0
@@ -81,7 +124,7 @@ class CharCNN():
             network = CharCnnNet()
 
             self.train(network, train_loader, n_epochs)
-            fold_accuracy, fold_precision, fold_recall = self.evaluate(test_loader, network)
+            fold_accuracy, fold_precision, fold_recall = self.evaluate(network, test_loader)
             total_accuracy += fold_accuracy
             total_precision += fold_precision
             total_recall += fold_recall
@@ -91,76 +134,9 @@ class CharCNN():
         average_accuracy = total_accuracy / folds
         average_precision = total_precision / folds
         average_recall = total_recall / folds
-        print('Average Accuracy: ' + str(average_accuracy))
-        print('Average Precision: ' + str(average_precision))
-        print('Average Recall: ' + str(average_recall))
-
-    def evaluate(self, valid_loader, network):
-        """
-        Evaluates the accuracy of a model with validation data
-        :param valid_loader: validation data iterator
-        """
-        network.eval()
-        criterion = nn.BCEWithLogitsLoss()
-
-        total_loss = 0
-        total_tp = 0
-        total_tn = 0
-        total_fp = 0
-        total_fn = 0
-        calculated = 0
-
-        num_sample = 1
-
-        with torch.no_grad():
-
-            for sample in valid_loader:
-
-                preds = network(sample)
-                loss = criterion(preds, sample['rating'])
-
-                tp, tn, fp, fn = self.get_eval_stats(preds, sample['rating'])
-
-                total_tp += tp
-                total_tn += tn
-                total_fp += fp
-                total_fn += fn
-
-                calculated += 1
-                total_loss += loss
-
-                num_sample = num_sample + 1
-
-            average_accuracy = ((total_tp + total_tn) * 1.0 / (total_tp + total_tn + total_fp + total_fn)) * 100
-            if total_tp + total_fp != 0:
-                average_precision = (total_tp * 1.0 / (total_tp + total_fp)) * 100
-            else:
-                average_precision = 0
-            average_recall = (total_tp * 1.0 / (total_tp + total_fn)) * 100
-            print('Evaluation Metrics:')
-            print('\nTotal Loss: {}\nAverage Accuracy: {}%\nAverage Precision: {}%\nAverage Recall: {}%'.format(
-                total_loss / len(valid_loader), average_accuracy, average_precision, average_recall))
-            print('True Positive: {}\tTrue Negative: {}\tFalse Positive: {}\tFalse Negative: {}\n'.format(
-                total_tp, total_tn, total_fp, total_fn))
-
-        return average_accuracy, average_precision, average_recall
-
-    def get_eval_stats(self, predictions, ratings):
-
-        preds = predictions.argmax(dim=1).tolist()
-        ratings = ratings.to(torch.int64).tolist()
-
-        tp, tn, fp, fn = 0, 0, 0, 0
-        for i, pred in enumerate(preds):
-            if pred == 1 and ratings[i] == 1:
-                tp += 1
-            elif pred == 1 and ratings[i] == 0:
-                fp += 1
-            elif pred == 0 and ratings[i] == 0:
-                tn += 1
-            elif pred == 0 and ratings[i] == 1:
-                fn += 1
-        return tp, tn, fp, fn
+        print('Average Accuracy: ' + str(average_accuracy) + '%')
+        print('Average Precision: ' + str(average_precision) + '%')
+        print('Average Recall: ' + str(average_recall) + '%')
 
     @staticmethod
     def get_data_loader(char_dataset, batch_size):
