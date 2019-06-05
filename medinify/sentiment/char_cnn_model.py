@@ -47,7 +47,7 @@ class CharCnnNet(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(8704, 1024),
+            nn.Linear(in_features=8704, out_features=1024),
             nn.ReLU(),
             nn.Dropout(p=0.5)
         )
@@ -55,11 +55,11 @@ class CharCnnNet(nn.Module):
         self.fc2 = nn.Sequential(
             nn.Linear(1024, 1024),
             nn.ReLU(),
-            nn.Dropout(p=0.5)
+            nn.Dropout(0.5)
         )
 
         self.fc3 = nn.Linear(1024, 2)
-        self.log_softmax = nn.LogSoftmax()
+        self.log_softmax = nn.LogSoftmax(dim=0)
 
     def forward(self, comment):
 
@@ -69,9 +69,7 @@ class CharCnnNet(nn.Module):
         comment = self.conv4(comment)
         comment = self.conv5(comment)
         comment = self.conv6(comment)
-
         comment = comment.view(comment.shape[0], -1)
-
         comment = self.fc1(comment)
         comment = self.fc2(comment)
         comment = self.fc3(comment)
