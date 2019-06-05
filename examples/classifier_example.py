@@ -17,18 +17,12 @@ def main():
     # review_classifier.evaluate_average_accuracy('citalopram-reviews.csv')
     # review_classifier.classify('neutral.txt')
 
-    data_file = sys.argv[1]
+    # data_file = sys.argv[1]
 
-    dataset = CharCnnDataset(data_file, 'examples/alphabet.json', 1014, use_medinify_processing=False)
+    dataset = CharCnnDataset('data/heart_drugs.csv', 'examples/alphabet.json', 1014, use_medinify_processing=False)
 
     sent = CharCNN()
-    loader = CharCNN.get_data_loader(dataset, 25)
-
-    network = CharCnnNet()
-
-    with open('examples/kfold_file_example.tar', 'rb') as f:
-        info = torch.load(f)
-        print(info)
+    sent.evaluate_k_fold(dataset, 10, 5, 'k-fold-saved.tar')
 
 if __name__ == "__main__":
     main()

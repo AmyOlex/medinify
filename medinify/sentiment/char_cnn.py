@@ -19,14 +19,15 @@ class CharCNN():
     pytorch character-based sentiment analysis CNNs
     """
 
-    def train(self, network, train_loader, n_epochs, path, valid_loader=None):
+    def train(self, network, train_loader, n_epochs, save_path, valid_loader=None):
 
         checkpoint = None
-        epoch = 1
-        if os.path.exists(path):
-            checkpoint = torch.load(path)
+        if os.path.exists(save_path):
+            checkpoint = torch.load(save_path)
 
+        epoch = 1
         optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
+
         if checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             network.load_state_dict(checkpoint['model_state_dict'])
@@ -72,10 +73,12 @@ class CharCNN():
 
             epoch += 1
 
-            torch.save({'epoch': epoch,
-                        'model_state_dict': network.state_dict(),
+            torch.save({'model_state_dict': network.state_dict(),
+                        'epoch': epoch,
                         'optimizer_state_dict': optimizer.state_dict()},
-                       path)
+                       save_path)
+
+        return network
 
     def evaluate(self, network, valid_loader):
 
@@ -138,15 +141,12 @@ class CharCNN():
             network = CharCnnNet()
 
             self.train(network, train_loader, n_epochs, path)
+            os.remove(path)
+
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, test_loader)
             total_accuracy += fold_accuracy
             total_precision += fold_precision
             total_recall += fold_recall
-
-            with open(path, 'wb') as f:
-                info = torch.load(f)
-                print(info)
-                exit()
 
             num_fold += 1
 
