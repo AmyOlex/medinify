@@ -11,6 +11,7 @@ import torch.nn.functional as F
 # Evaluation
 from sklearn.model_selection import StratifiedKFold
 
+import os
 
 class CharCNN():
     """
@@ -18,15 +19,23 @@ class CharCNN():
     pytorch character-based sentiment analysis CNNs
     """
 
-    def train(self, network, train_loader, n_epochs, valid_loader=None):
+    def train(self, network, train_loader, n_epochs, path, valid_loader=None):
+
+        checkpoint = None
+        epoch = 1
+        if os.path.exists(path):
+            checkpoint = torch.load(path)
 
         optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
+        if checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            network.load_state_dict(checkpoint['model_state_dict'])
+            epoch = checkpoint['epoch']
 
         network.train()
 
-        num_epoch = 1
-        for epoch in range(n_epochs):
-            print('Beginning Epoch {}'.format(num_epoch))
+        for epoch in range(epoch, n_epochs + 1):
+            print('Beginning Epoch {}'.format(epoch))
             batch_num = 1
             epoch_accuracies = []
             epoch_loss = 0
@@ -34,10 +43,10 @@ class CharCNN():
                 comments = batch['comment']
                 ratings = batch['rating']
                 logit = network(comments)
-                loss = F.nll_loss(logit, ratings)
-                epoch_loss += loss.item()
+                batch_loss = F.nll_loss(logit, ratings)
+                epoch_loss += batch_loss.item()
                 optimizer.zero_grad()
-                loss.backward()
+                batch_loss.backward()
                 torch.nn.utils.clip_grad_norm_(network.parameters(), 5)
                 optimizer.step()
 
@@ -61,7 +70,12 @@ class CharCNN():
             if valid_loader:
                 self.evaluate(network, valid_loader)
 
-            num_epoch += 1
+            epoch += 1
+
+            torch.save({'epoch': epoch,
+                        'model_state_dict': network.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict()},
+                       path)
 
     def evaluate(self, network, valid_loader):
 
@@ -103,7 +117,7 @@ class CharCNN():
 
         return total_accuracy, precision, recall
 
-    def evaluate_k_fold(self, dataset, n_epochs, folds):
+    def evaluate_k_fold(self, dataset, n_epochs, folds, path):
 
         comments = [review for review in dataset.comments]
         ratings = [review for review in dataset.ratings]
@@ -123,11 +137,16 @@ class CharCNN():
 
             network = CharCnnNet()
 
-            self.train(network, train_loader, n_epochs)
+            self.train(network, train_loader, n_epochs, path)
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, test_loader)
             total_accuracy += fold_accuracy
             total_precision += fold_precision
             total_recall += fold_recall
+
+            with open(path, 'wb') as f:
+                info = torch.load(f)
+                print(info)
+                exit()
 
             num_fold += 1
 

@@ -4,6 +4,7 @@ Examples for how to use the Medinify package
 
 from medinify.sentiment import ReviewClassifier, CharCNN, CharCnnDataset, CharCnnNet
 import sys
+import torch
 
 def main():
     """ Main function.
@@ -19,12 +20,15 @@ def main():
     data_file = sys.argv[1]
 
     dataset = CharCnnDataset(data_file, 'examples/alphabet.json', 1014, use_medinify_processing=False)
+
+    sent = CharCNN()
     loader = CharCNN.get_data_loader(dataset, 25)
 
     network = CharCnnNet()
-    sent = CharCNN()
 
-    sent.train(network, train_loader=loader, n_epochs=10)
+    with open('examples/kfold_file_example.tar', 'rb') as f:
+        info = torch.load(f)
+        print(info)
 
 if __name__ == "__main__":
     main()
