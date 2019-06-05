@@ -71,7 +71,7 @@ class CharCnnNet(nn.Module):
         comment = self.conv6(comment)
         comment = comment.view(comment.shape[0], -1)
         comment = self.fc1(comment)
-        comment = self.fc2(comment)
+        # comment = self.fc2(comment)
         comment = self.fc3(comment)
         comment = self.log_softmax(comment)
         return comment
