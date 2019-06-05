@@ -19,19 +19,10 @@ class CharCNN():
     pytorch character-based sentiment analysis CNNs
     """
 
-    def train(self, network, train_loader, n_epochs, save_path, valid_loader=None):
-
-        checkpoint = None
-        if os.path.exists(save_path):
-            checkpoint = torch.load(save_path)
+    def train(self, network, train_loader, n_epochs, valid_loader=None):
 
         epoch = 1
         optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
-
-        if checkpoint:
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            network.load_state_dict(checkpoint['model_state_dict'])
-            epoch = checkpoint['epoch']
 
         network.train()
 
@@ -72,11 +63,6 @@ class CharCNN():
                 self.evaluate(network, valid_loader)
 
             epoch += 1
-
-            torch.save({'model_state_dict': network.state_dict(),
-                        'epoch': epoch,
-                        'optimizer_state_dict': optimizer.state_dict()},
-                       save_path)
 
         return network
 
@@ -120,7 +106,7 @@ class CharCNN():
 
         return total_accuracy, precision, recall
 
-    def evaluate_k_fold(self, dataset, n_epochs, folds, path):
+    def evaluate_k_fold(self, dataset, n_epochs, folds):
 
         comments = [review for review in dataset.comments]
         ratings = [review for review in dataset.ratings]
@@ -140,8 +126,7 @@ class CharCNN():
 
             network = CharCnnNet()
 
-            self.train(network, train_loader, n_epochs, path)
-            os.remove(path)
+            self.train(network, train_loader, n_epochs)
 
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, test_loader)
             total_accuracy += fold_accuracy
