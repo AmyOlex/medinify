@@ -126,7 +126,7 @@ class CharCNN():
 
             network = CharCnnNet()
 
-            self.train(network, train_loader, n_epochs)
+            self.train(network, train_loader, n_epochs, valid_loader=test_loader)
 
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, test_loader)
             total_accuracy += fold_accuracy

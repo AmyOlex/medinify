@@ -52,13 +52,11 @@ class CharCnnNet(nn.Module):
             nn.Dropout(p=0.5)
         )
 
-        self.fc2 = nn.Sequential(
-            nn.Linear(1024, 1024),
-            nn.ReLU(),
+        self.fc3 = nn.Sequential(
+            nn.Linear(1024, 2),
             nn.Dropout(0.5)
         )
 
-        self.fc3 = nn.Linear(1024, 2)
         self.log_softmax = nn.LogSoftmax(dim=0)
 
     def forward(self, comment):
