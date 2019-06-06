@@ -47,7 +47,7 @@ class CharCnnNet(nn.Module):
         )
 
         self.fc1 = nn.Sequential(
-            nn.Linear(in_features=27648, out_features=1024),
+            nn.Linear(in_features=86016, out_features=1024),
             nn.ReLU(),
             nn.Dropout(p=0.5)
         )
@@ -64,8 +64,8 @@ class CharCnnNet(nn.Module):
     def forward(self, comment):
 
         comment = self.conv1(comment)
-        comment = self.conv2(comment)
-        comment = self.conv3(comment)
+        #comment = self.conv2(comment)
+        #comment = self.conv3(comment)
         #comment = self.conv4(comment)
         #comment = self.conv5(comment)
         #comment = self.conv6(comment)
