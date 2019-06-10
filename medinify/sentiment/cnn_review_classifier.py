@@ -7,15 +7,16 @@ from sklearn.model_selection import StratifiedKFold
 # Word Embeddings
 from gensim.models import Word2Vec
 
+
 # Medinify
-from medinify.sentiment.review_classifier import ReviewClassifier
+from medinify.sentiment import ReviewClassifier
+from medinify.sentiment.cnn_network import SentimentNetwork
+from medinify.sentiment.cnn_dataset import SentimentDataset
 
 # PyTorch
 import torch
 import torch.nn as nn
-from torch.nn import Module
-from torch.nn import functional as F
-import torch.utils.data
+from torch.utils.data import DataLoader
 import torch.optim as optim
 
 # TorchText
@@ -49,6 +50,13 @@ class CNNReviewClassifier:
         """
         vectors = Vectors(w2v_file)
         self.vectors = vectors
+
+    def alt_data_loader(self, data_file, embedding_file, max_len, batch):
+
+        dataset = SentimentDataset(data_file=data_file,
+                                   embedding_file=embedding_file,
+                                   max_len=max_len)
+        return DataLoader(dataset, batch_size=batch, shuffle=True)
 
     def get_data_loaders(self, train_file, valid_file, batch_size):
         """
@@ -368,69 +376,4 @@ class CNNReviewClassifier:
         print('Finished training!')
         self.embeddings = w2v_model.wv
         w2v_model.wv.save_word2vec_format(output_file)
-
-
-class SentimentNetwork(Module):
-    """
-    A PyTorch Convolutional Neural Network for the sentiment analysis of drug reviews
-    """
-
-    def __init__(self, vocab_size=None, embeddings=None):
-        """
-        Creates pytorch convnet for training
-        :param vocab_size: size of embedding vocab
-        :param embeddings: word embeddings
-        """
-        super(SentimentNetwork, self).__init__()
-
-        # embedding layer
-        self.embed_words = nn.Embedding(vocab_size, 100)
-        self.embed_words.weight = nn.Parameter(embeddings)
-
-        # convolutional layers
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(2, 100)).double()  # bigrams
-        self.conv2 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(3, 100)).double()  # trigrams
-        self.conv3 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(4, 100)).double()  # 4-grams
-
-        # dropout layer
-        self.dropout = nn.Dropout(0.5)
-
-        # fully-connected layers
-        self.fc1 = nn.Linear(300, 50).float()
-        self.out = nn.Linear(50, 1).float()
-
-    def forward(self, t):
-        """
-        Performs forward pass for data batch on CNN
-        """
-
-        # t starts as batch of shape [sentences length, batch size] with each word
-        # represented as integer index
-        # reshape to [batch size, sentence length]
-        comments = t.comment.permute(1, 0).to(torch.long)
-        embedded = self.embed_words(comments).unsqueeze(1).to(torch.double)
-
-        # convolve embedded outputs three times
-        # to find bigrams, tri-grams, and 4-grams (or different by adjusting kernel sizes)
-        convolved1 = self.conv1(embedded).squeeze(3)
-        convolved1 = F.relu(convolved1)
-
-        convolved2 = self.conv2(embedded).squeeze(3)
-        convolved2 = F.relu(convolved2)
-
-        convolved3 = self.conv3(embedded).squeeze(3)
-        convolved3 = F.relu(convolved3)
-
-        # maxpool convolved outputs
-        pooled_1 = F.max_pool1d(convolved1, convolved1.shape[2]).squeeze(2)
-        pooled_2 = F.max_pool1d(convolved2, convolved2.shape[2]).squeeze(2)
-        pooled_3 = F.max_pool1d(convolved3, convolved3.shape[2]).squeeze(2)
-
-        # concatenate maxpool outputs and dropout
-        cat = self.dropout(torch.cat((pooled_1, pooled_2, pooled_3), dim=1)).to(torch.float32)
-
-        # fully connected layers
-        linear = self.fc1(cat)
-        linear = F.relu(linear)
-        return self.out(linear)
 
