@@ -11,12 +11,10 @@ from gensim.models import Word2Vec
 # Medinify
 from medinify.sentiment import ReviewClassifier
 from medinify.sentiment.cnn_network import SentimentNetwork
-from medinify.sentiment.cnn_dataset import SentimentDataset
 
 # PyTorch
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import torch.optim as optim
 
 # TorchText
@@ -50,13 +48,6 @@ class CNNReviewClassifier:
         """
         vectors = Vectors(w2v_file)
         self.vectors = vectors
-
-    def alt_data_loader(self, data_file, embedding_file, max_len, batch):
-
-        dataset = SentimentDataset(data_file=data_file,
-                                   embedding_file=embedding_file,
-                                   max_len=max_len)
-        return DataLoader(dataset, batch_size=batch, shuffle=True)
 
     def get_data_loaders(self, train_file, valid_file, batch_size):
         """

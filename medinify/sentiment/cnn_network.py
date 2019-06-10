@@ -12,12 +12,14 @@ class SentimentNetwork(Module):
     A PyTorch Convolutional Neural Network for the sentiment analysis of drug reviews
     """
 
-    def __init__(self, vocab_size=None, embeddings=None):
+    def __init__(self, vocab_size, embeddings):
         """
         Creates pytorch convnet for training
         :param vocab_size: size of embedding vocab
         :param embeddings: word embeddings
+
         """
+
         super(SentimentNetwork, self).__init__()
 
         # embedding layer
@@ -25,9 +27,20 @@ class SentimentNetwork(Module):
         self.embed_words.weight = nn.Parameter(embeddings)
 
         # convolutional layers
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(2, 100)).double()  # bigrams
-        self.conv2 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(3, 100)).double()  # trigrams
-        self.conv3 = nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(4, 100)).double()  # 4-grams
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(2, 100)).double(),
+            nn.ReLU()
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(3, 100)).double(),
+            nn.ReLU()
+        )
+
+        self.conv3 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=100, kernel_size=(4, 100)).double(),
+            nn.ReLU()
+        )
 
         # dropout layer
         self.dropout = nn.Dropout(0.5)
@@ -41,22 +54,17 @@ class SentimentNetwork(Module):
         Performs forward pass for data batch on CNN
         """
 
-        # t starts as batch of shape [sentences length, batch size] with each word
-        # represented as integer index
-        # reshape to [batch size, sentence length]
+        # reshape
         comments = t.comment.permute(1, 0).to(torch.long)
+
+        # embed
         embedded = self.embed_words(comments).unsqueeze(1).to(torch.double)
 
         # convolve embedded outputs three times
         # to find bigrams, tri-grams, and 4-grams (or different by adjusting kernel sizes)
         convolved1 = self.conv1(embedded).squeeze(3)
-        convolved1 = F.relu(convolved1)
-
         convolved2 = self.conv2(embedded).squeeze(3)
-        convolved2 = F.relu(convolved2)
-
         convolved3 = self.conv3(embedded).squeeze(3)
-        convolved3 = F.relu(convolved3)
 
         # maxpool convolved outputs
         pooled_1 = F.max_pool1d(convolved1, convolved1.shape[2]).squeeze(2)
