@@ -33,22 +33,35 @@ class CNNReviewClassifier:
         embeddings: torch tensor of word2vec embeddings
         comment_field - TorchText data field for comments
         rating_field - TorchText LabelField for ratings
-        loss - CNN loss function
     """
 
-    vectors = None
+    word_vectors = None
+    char_vectors = None
     embeddings = None
+    char_embeddings = None
     comment_field = None
+    character_field = None
     rating_field = None
-    loss = nn.BCEWithLogitsLoss()
+    concat = False
 
-    def __init__(self, w2v_file):
+    def __init__(self, w2v_file, use_c2v=False, c2v_file=None, concat=False, add=False):
         """
         Initializes CNNReviewClassifier
         :param w2v_file: embedding file
         """
-        vectors = Vectors(w2v_file)
-        self.vectors = vectors
+        word_vectors = Vectors(w2v_file)
+        self.word_vectors = word_vectors
+
+        if use_c2v:
+            char_vectors = Vectors(c2v_file)
+            self.char_vectors = char_vectors
+
+            if not concat and not add:
+                print('If using character embeddings, you must set either concat or add to true')
+                exit()
+
+            if concat:
+                self.concat = True
 
     def get_data_loaders(self, train_file, valid_file, batch_size):
         """
@@ -76,6 +89,8 @@ class CNNReviewClassifier:
 
         # create TorchText fields
         self.comment_field = data.Field(lower=True, dtype=torch.float64)
+        if self.char_vectors:
+            self.character_field = data.Field(lower=True, dtype=torch.float64)
         self.rating_field = data.LabelField(dtype=torch.float64)
 
         # iterate through dataset and generate examples with comment_field and rating_field
@@ -87,9 +102,16 @@ class CNNReviewClassifier:
             rating = review[1]
             characters = list(comment)
             review = {'comment': comment, 'characters': characters, 'rating': rating}
-            ex = Example.fromdict(data=review,
-                                  fields={'comment': ('comment', self.comment_field),
-                                          'rating': ('rating', self.rating_field)})
+            if self.char_vectors:
+                ex = Example.fromdict(data=review,
+                                      fields={'comment': ('comment', self.comment_field),
+                                              'characters': ('characters', self.character_field),
+                                              'rating': ('rating', self.rating_field)})
+            else:
+                ex = Example.fromdict(data=review,
+                                      fields={'comment': ('comment', self.comment_field),
+                                              'rating': ('rating', self.rating_field)})
+
             train_examples.append(ex)
 
         for review in valid_dataset:
@@ -97,28 +119,41 @@ class CNNReviewClassifier:
             rating = review[1]
             characters = list(comment)
             review = {'comment': comment, 'characters': characters, 'rating': rating}
-            ex = Example.fromdict(data=review,
-                                  fields={'comment': ('comment', self.comment_field),
-                                          'rating': ('rating', self.rating_field)})
+            if self.char_vectors:
+                ex = Example.fromdict(data=review,
+                                      fields={'comment': ('comment', self.comment_field),
+                                              'characters': ('characters', self.character_field),
+                                              'rating': ('rating', self.rating_field)})
+            else:
+                ex = Example.fromdict(data=review,
+                                      fields={'comment': ('comment', self.comment_field),
+                                              'rating': ('rating', self.rating_field)})
             valid_examples.append(ex)
 
         train_dataset = Dataset(examples=train_examples,
                                 fields={'comment': self.comment_field,
+                                        'characters': self.character_field,
                                         'rating': self.rating_field})
         valid_dataset = Dataset(examples=valid_examples,
                                 fields={'comment': self.comment_field,
+                                        'characters': self.character_field,
                                         'rating': self.rating_field})
 
         # build comment_field and rating_field vocabularies
         self.comment_field.build_vocab(train_dataset.comment, valid_dataset.comment,
-                                       max_size=10000, vectors=self.vectors)
+                                       max_size=10000, vectors=self.word_vectors)
         self.embeddings = self.comment_field.vocab.vectors
+
+        if self.char_vectors:
+            self.character_field.build_vocab(train_dataset.characters, valid_dataset.characters,
+                                             vectors = self.char_vectors)
+            self.char_embeddings = self.character_field.vocab.vectors
 
         self.rating_field.build_vocab(['pos', 'neg'])
 
         # create torchtext iterators for train data and validation data
-        train_loader = Iterator(train_dataset, batch_size, sort_key=lambda x: len(x))
-        valid_loader = Iterator(valid_dataset, batch_size, sort_key=lambda x: len(x))
+        train_loader = Iterator(train_dataset, batch_size)
+        valid_loader = Iterator(valid_dataset, batch_size)
 
         return train_loader, valid_loader
 
@@ -141,8 +176,7 @@ class CNNReviewClassifier:
         true_neg = 0
         false_neg = 0
 
-        i = 0
-        while i < len(preds):
+        for i in range(len(preds)):
             if preds[i] == 0 and ratings[i] == 0:
                 true_neg += 1
             elif preds[i] == 0 and ratings[i] == 1:
@@ -151,7 +185,6 @@ class CNNReviewClassifier:
                 true_pos += 1
             elif preds[i] == 1 and ratings[i] == 0:
                 false_pos += 1
-            i += 1
 
         return true_pos, false_pos, true_neg, false_neg
 
@@ -161,7 +194,15 @@ class CNNReviewClassifier:
         """
 
         train_loader, valid_loader = self.get_data_loaders(train_file, valid_file, batch_size)
-        network = SentimentNetwork(len(self.vectors.stoi), self.vectors.vectors)
+        if not self.character_field:
+            network = SentimentNetwork(len(self.comment_field.vocab), self.embeddings)
+        else:
+            if self.concat:
+                network = SentimentNetwork(len(self.comment_field.vocab), self.embeddings,
+                                           char_field=self.character_field, concat=True)
+            else:
+                network = SentimentNetwork(len(self.comment_field.vocab), self.embeddings,
+                                           char_field=self.character_field, add=True)
         self.train(network=network, train_loader=train_loader,
                    valid_loader=valid_loader, n_epochs=n_epochs)
 
@@ -176,7 +217,9 @@ class CNNReviewClassifier:
                 (set to false during cross-validation)
         """
 
+        torch.set_grad_enabled(True)
         optimizer = optim.Adam(network.parameters(), lr=0.001)
+        criterion = nn.BCEWithLogitsLoss()
 
         network.train()
 
@@ -212,7 +255,7 @@ class CNNReviewClassifier:
                 total_tn += tn
                 total_fn += fn
                 total_fp += fp
-                loss = self.loss(predictions, batch.rating)
+                loss = criterion(predictions, batch.rating)
                 loss.backward()
                 optimizer.step()
 
@@ -248,6 +291,8 @@ class CNNReviewClassifier:
 
         network.eval()
 
+        criterion = nn.BCEWithLogitsLoss()
+
         losses = []
         accuracies = []
         precisions = []
@@ -260,7 +305,7 @@ class CNNReviewClassifier:
             for sample in valid_loader:
 
                 predictions = network(sample).squeeze(1)
-                sample_loss = self.loss(predictions.to(torch.double),
+                sample_loss = criterion(predictions.to(torch.double),
                                         sample.rating.to(torch.double))
 
                 tp, fp, tn, fn = self.batch_metrics(predictions, sample.rating)
@@ -338,7 +383,15 @@ class CNNReviewClassifier:
             test_data = [dataset[x] for x in test]
 
             train_loader, valid_loader = self.generate_data_loaders(train_data, test_data, 25)
-            network = SentimentNetwork(vocab_size=len(self.comment_field.vocab), embeddings=self.embeddings)
+
+            if not self.character_field:
+                network = SentimentNetwork(vocab_size=len(self.comment_field.vocab), embeddings=self.embeddings)
+            else:
+                if not self.character_field:
+                    network = SentimentNetwork(vocab_size=len(self.comment_field.vocab), embeddings=self.embeddings)
+                else:
+                    network = SentimentNetwork(vocab_size=len(self.comment_field.vocab), embeddings=self.embeddings,
+                                               char_field=self.character_field)
 
             network.apply(self.set_weights)
 
