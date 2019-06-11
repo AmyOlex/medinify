@@ -16,6 +16,7 @@ from medinify.sentiment.cnn_network import SentimentNetwork
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn import functional as F
 
 # TorchText
 from torchtext import data
