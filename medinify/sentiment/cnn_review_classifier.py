@@ -181,6 +181,7 @@ class CNNReviewClassifier:
         network.train()
 
         num_epoch = 1
+
         for epoch in range(num_epoch, n_epochs + 1):
             print('Starting Epoch ' + str(num_epoch))
 
@@ -223,6 +224,7 @@ class CNNReviewClassifier:
             epoch_accuracy = (total_tp + total_tn) * 1.0 / (total_tp + total_tn + total_fp + total_fn)
             epoch_precision = total_tp * 1.0 / (total_tp + total_fp)
             epoch_recall = total_tp * 1.0 / (total_tp + total_fn)
+
             print('\nEpoch Loss: ' + str(epoch_loss / len(train_loader)))
             print('Epoch Accuracy: ' + str(epoch_accuracy * 100) + '%')
             print('Epoch Precision: ' + str(epoch_precision * 100) + '%')
@@ -246,12 +248,10 @@ class CNNReviewClassifier:
 
         network.eval()
 
-        total_loss = 0
-        total_tp = 0
-        total_tn = 0
-        total_fp = 0
-        total_fn = 0
-        calculated = 0
+        losses = []
+        accuracies = []
+        precisions = []
+        recalls = []
 
         num_sample = 1
 
@@ -265,23 +265,41 @@ class CNNReviewClassifier:
 
                 tp, fp, tn, fn = self.batch_metrics(predictions, sample.rating)
 
-                total_tp += tp
-                total_tn += tn
-                total_fp += fp
-                total_fn += fn
-                calculated += 1
-                total_loss += sample_loss
+                batch_accuracy = (tp + tn * 1.0) / (tp + tn + fp + fn)
+                batch_precision = (tp * 1.0) / (tp + fp)
+                batch_recall = (tp * 1.0) / (tp + fn)
+
+                accuracies.append(batch_accuracy)
+                precisions.append(batch_precision)
+                recalls.append(batch_recall)
+
+                losses.append(sample_loss)
 
                 num_sample = num_sample + 1
 
-            average_accuracy = ((total_tp + total_tn) * 1.0 / (total_tp + total_tn + total_fp + total_fn)) * 100
-            average_precision = (total_tp * 1.0 / (total_tp + total_fp)) * 100
-            average_recall = (total_tp * 1.0 / (total_tp + total_fn)) * 100
+            average_loss = np.mean(np.array(losses))
+            loss_std = np.std(np.array(losses))
+            average_accuracy = np.mean(np.array(accuracies)) * 100
+            accuracy_std = np.std(np.array(accuracies)) * 100
+            average_precision = np.mean(np.array(precisions)) * 100
+            precision_std = np.std(np.array(precisions)) * 100
+            average_recall = np.mean(np.array(recalls)) * 100
+            recall_std = np.std(np.array(recalls)) * 100
+
+            f1_measures = []
+            for i, precision in enumerate(precisions):
+                f1 = 2 * ((precision * recalls[i])/(precision + recalls[i]))
+                f1_measures.append(f1)
+
+            average_f1 = np.mean(np.array(f1_measures)) * 100
+            f1_std = np.std(np.array(f1_measures)) * 100
+
             print('Evaluation Metrics:')
-            print('\nTotal Loss: {}\nAverage Accuracy: {}%\n\nAverage Precision: {}%\nAverage Recall: {}%'.format(
-                total_loss / len(valid_loader), average_accuracy, average_precision, average_recall))
-            print('True Positive: {}\tTrue Negative: {}\tFalse Positive: {}\tFalse Negative: {}\n'.format(
-                total_tp, total_tn, total_fp, total_fn))
+            print('Average Loss: {} +/-{}'.format(average_loss, loss_std))
+            print('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
+            print('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
+            print('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
+            print('Average F1 Measure: {}% +/-{}%\n'.format(average_f1, f1_std))
 
         return average_accuracy, average_precision, average_recall
 
@@ -313,9 +331,7 @@ class CNNReviewClassifier:
 
         skf = StratifiedKFold(n_splits=num_folds)
 
-        total_accuracy = 0
-        total_precision = 0
-        total_recall = 0
+        accuracies, precisions, recalls = [], [], []
 
         for train, test in skf.split(comments, ratings):
             train_data = [dataset[x] for x in train]
@@ -328,16 +344,20 @@ class CNNReviewClassifier:
 
             self.train(network, train_loader, num_epochs, evaluate=False)
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, valid_loader)
-            total_accuracy += fold_accuracy
-            total_precision += fold_precision
-            total_recall += fold_recall
+            accuracies.append(fold_accuracy)
+            precisions.append(fold_precision)
+            recalls.append(fold_recall)
 
-        average_accuracy = total_accuracy / 5
-        average_precision = total_precision / 5
-        average_recall = total_recall / 5
-        print('Average Accuracy: ' + str(average_accuracy))
-        print('Average Precision: ' + str(average_precision))
-        print('Average Recall: ' + str(average_recall))
+        average_accuracy = np.mean(np.array(accuracies)) * 100
+        average_precision = np.mean(np.array(precisions)) * 100
+        average_recall = np.mean(np.array(recalls)) * 100
+        accuracy_std = np.std(np.array(accuracies)) * 100
+        precision_std = np.std(np.array(precisions)) * 100
+        recall_std = np.std(np.array(recalls)) * 100
+
+        print('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
+        print('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
+        print('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
 
     def train_word_embeddings(self, datasets, output_file, training_epochs):
         """trains word embeddings from data files (csvs)
