@@ -24,6 +24,7 @@ class CharCNN():
         epoch = 1
         optimizer = torch.optim.Adam(network.parameters(), lr=0.001)
 
+        network = self.set_weights(network)
         network.train()
 
         for epoch in range(epoch, n_epochs + 1):
@@ -45,8 +46,8 @@ class CharCNN():
                 # get the max along the 1st dim, [1] is the indices (0 or 1, pos or neg)
                 if batch_num % 25 == 0:
                     print('On batch {} of {}'.format(batch_num, len(train_loader)))
-                    print('Predictions:\t{}'.format(torch.max(logit, 1)[1].numpy()))
-                    print('Targets:\t{}'.format(ratings.numpy()))
+                    # print('Predictions:\t{}'.format(torch.max(logit, 1)[1].numpy()))
+                    # print('Targets:\t{}'.format(ratings.numpy()))
                     num_correct = torch.eq(ratings.to(torch.int64), torch.max(logit, 1)[1]).sum().item()
                     batch_accuracy = (num_correct * 1.0 / ratings.shape[0])
                     epoch_accuracies.append(batch_accuracy)
@@ -106,6 +107,18 @@ class CharCNN():
 
         return total_accuracy, precision, recall
 
+    def set_weights(self, network):
+        """
+        Randomly initializes weights for neural network
+        :param network: network being initialized
+        :return: initialized network
+        """
+        if type(network) == nn.Conv2d or type(network) == nn.Linear:
+            torch.nn.init.xavier_uniform_(network.weight)
+            network.bias.data.fill_(0.01)
+
+        return network
+
     def evaluate_k_fold(self, dataset, n_epochs, folds):
 
         comments = [review for review in dataset.comments]
@@ -125,6 +138,7 @@ class CharCNN():
             test_loader = self.get_data_loader(test_data, 25)
 
             network = CharCnnNet()
+            network = self.set_weights(network)
 
             self.train(network, train_loader, n_epochs, valid_loader=test_loader)
 
