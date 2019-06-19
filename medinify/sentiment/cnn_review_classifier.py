@@ -16,7 +16,6 @@ from medinify.sentiment.cnn_network import SentimentNetwork
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.nn import functional as F
 
 # TorchText
 from torchtext import data
@@ -333,6 +332,7 @@ class CNNReviewClassifier:
 
         accuracies, precisions, recalls = [], [], []
 
+        num_fold = 1
         for train, test in skf.split(comments, ratings):
             train_data = [dataset[x] for x in train]
             test_data = [dataset[x] for x in test]
@@ -343,17 +343,20 @@ class CNNReviewClassifier:
             network.apply(self.set_weights)
 
             self.train(network, train_loader, num_epochs, evaluate=False)
+            print('Fold {}:'.format(num_fold))
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, valid_loader)
             accuracies.append(fold_accuracy)
             precisions.append(fold_precision)
             recalls.append(fold_recall)
 
-        average_accuracy = np.mean(np.array(accuracies)) * 100
-        average_precision = np.mean(np.array(precisions)) * 100
-        average_recall = np.mean(np.array(recalls)) * 100
-        accuracy_std = np.std(np.array(accuracies)) * 100
-        precision_std = np.std(np.array(precisions)) * 100
-        recall_std = np.std(np.array(recalls)) * 100
+            num_fold += 1
+
+        average_accuracy = np.mean(np.array(accuracies))
+        average_precision = np.mean(np.array(precisions))
+        average_recall = np.mean(np.array(recalls))
+        accuracy_std = np.std(np.array(accuracies))
+        precision_std = np.std(np.array(precisions))
+        recall_std = np.std(np.array(recalls))
 
         print('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
         print('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
