@@ -32,11 +32,26 @@ class ReviewDataset():
         self.drug_name = drug_name
         self.scraper = scraper
 
+        """
+
         with open('../dataset-config.json', 'r') as config_file:
             config = json.load(config_file)
         self.config = config['reviews']
+        
+        """
 
         print('Created object for {}'.format(self.drug_name))
+
+    def generate_ratings_webmd(self):
+
+        new_reviews = []
+        for review in self.reviews:
+            review['rating'] = review['effectiveness']
+            del review['effectiveness']
+            del review['ease of use']
+            del review['satisfaction']
+            new_reviews.append(review)
+        self.reviews = new_reviews
 
     def collect(self, url, testing=False):
         """Scrapes drug reviews and saves them as dictionary property

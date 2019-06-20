@@ -22,6 +22,26 @@ from torchtext import data
 from torchtext.data import Example, Dataset, Iterator
 from torchtext.vocab import Vectors
 
+import logging
+import argparse
+import time
+import datetime
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+file_formatter = logging.Formatter('%(asctime)s:\t%(message)s\t(%(name)s)')
+console_formatter = logging.Formatter('%(message)s')
+
+file_handler = logging.FileHandler('data/output.log')
+file_handler.setFormatter(file_formatter)
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(console_formatter)
+
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
 
 class CNNReviewClassifier:
     """For performing sentiment analysis on drug reviews
@@ -58,11 +78,26 @@ class CNNReviewClassifier:
         :return: data loaders
         """
 
-        dataset_maker = ReviewClassifier()
-        train_data = dataset_maker.create_dataset(train_file)
-        valid_data = dataset_maker.create_dataset(valid_file)
+        loaders_info = {}
 
-        return self.generate_data_loaders(train_data, valid_data, batch_size)
+        dataset_maker = ReviewClassifier()
+
+        train_data = dataset_maker.create_dataset(train_file)
+        loaders_info['train_name'] = dataset_maker.dataset_info['name']
+        loaders_info['train_size'] = dataset_maker.dataset_info['size']
+        loaders_info['train_pos'] = dataset_maker.dataset_info['num_pos']
+        loaders_info['train_neg'] = dataset_maker.dataset_info['num_neg']
+
+        valid_data = dataset_maker.create_dataset(valid_file)
+        loaders_info['valid_name'] = dataset_maker.dataset_info['name']
+        loaders_info['valid_size'] = dataset_maker.dataset_info['size']
+        loaders_info['valid_pos'] = dataset_maker.dataset_info['num_pos']
+        loaders_info['valid_neg'] = dataset_maker.dataset_info['num_neg']
+
+        logger.info('Generating Data Loaders...')
+
+        train, valid = self.generate_data_loaders(train_data, valid_data, batch_size)
+        return train, valid, loaders_info
 
     def generate_data_loaders(self, train_dataset, valid_dataset, batch_size):
         """
@@ -159,12 +194,14 @@ class CNNReviewClassifier:
         Trains a model given train file and validation file
         """
 
-        train_loader, valid_loader = self.get_data_loaders(train_file, valid_file, batch_size)
+        train_loader, valid_loader, loader_info = self.get_data_loaders(train_file, valid_file, batch_size)
         network = SentimentNetwork(len(self.vectors.stoi), self.vectors.vectors)
-        self.train(network=network, train_loader=train_loader,
-                   valid_loader=valid_loader, n_epochs=n_epochs)
+        network, train_info = self.train(network=network, train_loader=train_loader,
+                                         valid_loader=valid_loader, n_epochs=n_epochs)
+        return network, train_info
 
-    def train(self, network, train_loader, n_epochs, valid_loader=None, evaluate=True):
+    def train(self, network, train_loader, n_epochs,
+              valid_loader=None, evaluate=True):
         """
         Trains network on training data
         :param network: network being trained
@@ -176,13 +213,16 @@ class CNNReviewClassifier:
         """
 
         optimizer = optim.Adam(network.parameters(), lr=0.001)
+        training_info = []
 
         network.train()
 
         num_epoch = 1
 
         for epoch in range(num_epoch, n_epochs + 1):
-            print('Starting Epoch ' + str(num_epoch))
+            logger.info('Starting Epoch ' + str(num_epoch))
+            start_time = time.time()
+            start_stamp = datetime.datetime.utcfromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
 
             epoch_loss = 0
             total_tp = 0
@@ -195,8 +235,8 @@ class CNNReviewClassifier:
             batch_num = 1
             for batch in train_loader:
 
-                if batch_num % 25 == 0:
-                    print('On batch ' + str(batch_num) + ' of ' + str(len(train_loader)))
+                # if batch_num % 25 == 0:
+                    # logger.info('On batch ' + str(batch_num) + ' of ' + str(len(train_loader)))
 
                 optimizer.zero_grad()
 
@@ -224,19 +264,30 @@ class CNNReviewClassifier:
             epoch_precision = total_tp * 1.0 / (total_tp + total_fp)
             epoch_recall = total_tp * 1.0 / (total_tp + total_fn)
 
-            print('\nEpoch Loss: ' + str(epoch_loss / len(train_loader)))
-            print('Epoch Accuracy: ' + str(epoch_accuracy * 100) + '%')
-            print('Epoch Precision: ' + str(epoch_precision * 100) + '%')
-            print('Epoch Recall: ' + str(epoch_recall * 100) + '%')
-            print('True Positive: {}\tTrue Negative: {}\tFalse Positive: {}\tFalse Negative: {}\n'.format(
+            logger.info('\nEpoch Loss: ' + str(epoch_loss / len(train_loader)))
+            logger.info('Epoch Accuracy: ' + str(epoch_accuracy * 100) + '%')
+            logger.info('Epoch Precision: ' + str(epoch_precision * 100) + '%')
+            logger.info('Epoch Recall: ' + str(epoch_recall * 100) + '%')
+            logger.info('True Positive: {}\tTrue Negative: {}\tFalse Positive: {}\tFalse Negative: {}\n'.format(
                 total_tp, total_tn, total_fp, total_fn))
+
+            end_time = time.time()
+            end_stamp = datetime.datetime.utcfromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
+            time_elapsed = end_time - start_time
+
+            epoch_info = {'num': num_epoch, 'accuracy': epoch_accuracy,
+                          'precision': epoch_precision, 'recall': epoch_recall,
+                          'true_pos': total_tp, 'true_neg': total_tn,
+                          'false_pos': total_fp, 'false_neg': total_fn,
+                          'start': start_stamp, 'end': end_stamp, 'elapsed': time_elapsed}
+            training_info.append(epoch_info)
 
             if evaluate:
                 self.evaluate(network, valid_loader)
 
             num_epoch = num_epoch + 1
 
-        return network
+        return network, training_info
 
     def evaluate(self, network, valid_loader):
         """
@@ -293,12 +344,12 @@ class CNNReviewClassifier:
             average_f1 = np.mean(np.array(f1_measures)) * 100
             f1_std = np.std(np.array(f1_measures)) * 100
 
-            print('Evaluation Metrics:')
-            print('Average Loss: {} +/-{}'.format(average_loss, loss_std))
-            print('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
-            print('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
-            print('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
-            print('Average F1 Measure: {}% +/-{}%\n'.format(average_f1, f1_std))
+            logger.info('Evaluation Metrics:')
+            logger.info('Average Loss: {} +/-{}'.format(average_loss, loss_std))
+            logger.info('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
+            logger.info('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
+            logger.info('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
+            logger.info('Average F1 Measure: {}% +/-{}%\n'.format(average_f1, f1_std))
 
         return average_accuracy, average_precision, average_recall
 
@@ -339,11 +390,10 @@ class CNNReviewClassifier:
 
             train_loader, valid_loader = self.generate_data_loaders(train_data, test_data, 25)
             network = SentimentNetwork(vocab_size=len(self.comment_field.vocab), embeddings=self.embeddings)
-
             network.apply(self.set_weights)
 
-            self.train(network, train_loader, num_epochs, evaluate=False)
-            print('Fold {}:'.format(num_fold))
+            network, train_info = self.train(network, train_loader, num_epochs, evaluate=False)
+            logger.info('Fold {}:'.format(num_fold))
             fold_accuracy, fold_precision, fold_recall = self.evaluate(network, valid_loader)
             accuracies.append(fold_accuracy)
             precisions.append(fold_precision)
@@ -358,17 +408,109 @@ class CNNReviewClassifier:
         precision_std = np.std(np.array(precisions))
         recall_std = np.std(np.array(recalls))
 
-        print('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
-        print('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
-        print('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
+        logger.info('Average Accuracy: {}% +/-{}%'.format(average_accuracy, accuracy_std))
+        logger.info('Average Precision: {}% +/-{}%'.format(average_precision, precision_std))
+        logger.info('Average Recall: {}% +/-{}%'.format(average_recall, recall_std))
+
+
+def main():
+
+    parser = argparse.ArgumentParser('Sentiment CNN ArgParser')
+    parser.add_argument('-t', '--train', help='Training file path')
+    parser.add_argument('-s', '--save', help='Output file to save trained model')
+    parser.add_argument('-n', '--no-save', help='Do not save trained model as a file', action='store_true')
+    parser.add_argument('-e', '--evaluate', help='Evaluation file path')
+    parser.add_argument('-m', '--model', help='File path to trained model to evaluate')
+    parser.add_argument('-v', '--validate', help='K-Fold cross validation file path')
+    parser.add_argument('-w', '--w2v', help='Word2Vec file path')
+    parser.add_argument('-f', '--folds', help='Number folds for cross-fold validation')
+    parser.add_argument('-p', '--epoch', help='Number of epochs for either training or validation')
+    parser.add_argument('-b', '--batch', help='Batch size of data loader(s)')
+    parser.add_argument('-r', '--report', help='output path for training/evaluation/validation report')
+
+    args = parser.parse_args()
+
+    if not args.w2v:
+        print('A word2vec file is required for all training, evaluating, and validation')
+        return
+
+    classifier = CNNReviewClassifier(args.w2v)
+    batch = 25
+    folds = 5
+    epochs = 10
+
+    if args.evaluate and not args.model and not args.train:
+        print('A trained model must be specified when evaluating')
+    if args.train and args.evaluate:
+        if not args.save and not args.no_save:
+            print('When training a model, you must specify an output file in which to save the model\'s '
+                  'information, or specify not to save a model (using the \'-n\' or \'--no-save flag\')')
+            return
+        if args.batch:
+            batch = int(args.batch)
+        if args.epoch:
+            epochs = int(args.epoch)
+        train, valid, loaders_info = classifier.get_data_loaders(train_file=args.train,
+                                                                 valid_file=args.evaluate,
+                                                                 batch_size=batch)
+        info = loaders_info
+        info['batch'] = batch
+        info['epochs'] = epochs
+        info['w2v'] = args.w2v[(args.w2v.rfind('/') + 1):args.w2v.rfind('.')]
+
+        network = SentimentNetwork(len(classifier.comment_field.vocab), classifier.embeddings)
+        network = classifier.set_weights(network)
+        network, train_info = classifier.train(network, n_epochs=epochs, train_loader=train, evaluate=False)
+        info['train_info'] = train_info
+
+        if not args.no_save:
+            torch.save(network.state_dict(), args.save)
+
+        average_accuracy, average_precision, average_recall = classifier.evaluate(valid_loader=valid,
+                                                                                  network=network)
+
+        eval_info = {'accuracy': average_accuracy, 'precision': average_precision, 'recall': average_recall}
+        info['eval_info'] = eval_info
+        print(info)
+
+        return
+        # check for train file, w2v file, evaluation file, and model save file name (these are required)
+        # check for num-epochs, batch size, if none, set defaults
+        # train, evaluate, and save
+        # return
+    if args.train:
+        return
+        # check for train file, w2v file, and model save file name (these are required)
+        # check for num-epochs, batch size - if none, set defaults
+        # train and save
+        # return
+    if args.evaluate:
+        return
+        # check for validation file and model (these are required
+        # check for batch size - if none, set default
+        # evaluate
+        # return
+    if args.validate:
+        return
+        # check for validation file and w2v file (these are required)
+        # check for batch size, num-epochs, and num-folds - if none, set defaults
+        # validate
+        # return
+
+
+if __name__ == '__main__':
+    main()
+
+    """
+    This function does not belong in this class
+    TODO: Figure out a better place to put this functionality
 
     def train_word_embeddings(self, datasets, output_file, training_epochs):
-        """trains word embeddings from data files (csvs)
+        trains word embeddings from data files (csvs)
         Parameters:
             datasets - list of file paths to dataset csvs
             output_file - string with name of w2v file
             training_epochs - number of epochs to train embeddings
-        """
 
         classifier = ReviewClassifier()
         comments = []
@@ -390,5 +532,6 @@ class CNNReviewClassifier:
                         epochs=training_epochs)
         print('Finished training!')
         self.embeddings = w2v_model.wv
-        w2v_model.wv.save_word2vec_format(output_file)
+        w2v_model.wv.save_word2vec_format(output_file) 
+    """
 

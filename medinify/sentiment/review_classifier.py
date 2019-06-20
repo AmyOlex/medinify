@@ -25,6 +25,7 @@ from keras.layers import Dense, Dropout
 import tarfile
 import os
 
+
 class ReviewClassifier():
     """For performing sentiment analysis on drug reviews
 
@@ -42,6 +43,7 @@ class ReviewClassifier():
     encoder = None
     evaluating = False
     w2v_model = None
+    dataset_info = {}
 
     model = None
 
@@ -56,6 +58,10 @@ class ReviewClassifier():
         """
 
         reviews = []
+        index = reviews_filename.rfind('/') + 1
+        drug_name = reviews_filename[index:].replace('_', ' ').replace('-', ' ').replace('.', ' ').split(' ')[0]
+        # drug_name = reviews_filename
+        self.dataset_info['name'] = drug_name
         with open(reviews_filename, newline='') as reviews_file:
             reader = csv.DictReader(reviews_file)
 
@@ -95,6 +101,10 @@ class ReviewClassifier():
         print("Total Positive Instances:" + str(len(positive_comments)))
 
         dataset = positive_comments + negative_comments
+
+        self.dataset_info['size'] = len(dataset)
+        self.dataset_info['num_pos'] = len(positive_comments)
+        self.dataset_info['num_neg'] = len(negative_comments)
 
         return dataset
 
