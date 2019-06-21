@@ -307,6 +307,9 @@ class CNNReviewClassifier:
 
         with torch.no_grad():
 
+            start_time = time.time()
+            start_stamp = datetime.datetime.utcfromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
+
             for sample in valid_loader:
 
                 predictions = network(sample).squeeze(1)
@@ -326,6 +329,10 @@ class CNNReviewClassifier:
                 losses.append(sample_loss)
 
                 num_sample = num_sample + 1
+
+            end_time = time.time()
+            end_stamp = datetime.datetime.utcfromtimestamp(start_time).strftime('%Y-%m-%d %H:%M:%S')
+            time_elapsed = end_time - start_time
 
             average_loss = np.mean(np.array(losses))
             loss_std = np.std(np.array(losses))
@@ -485,6 +492,32 @@ def main():
         # train and save
         # return
     if args.evaluate:
+
+        info = {}
+
+        if not args.model:
+            print('If evaluating and not training, you must specify the path to a '
+                  'trained model (using the --model flag)')
+            return
+
+        train, valid, loader_info = classifier.get_data_loaders(train_file=args.evaluate,
+                                                                valid_file=args.evaluate,
+                                                                batch_size=batch)
+        info['data_name'] = loader_info['valid_name']
+        info['data_size'] = loader_info['valid_size']
+        info['num_pos'] = loader_info['valid_pos']
+        info['num_neg'] = loader_info['valid_neg']
+        model = SentimentNetwork(len(classifier.comment_field.vocab), classifier.embeddings)
+        model.load_state_dict(torch.load(args.model))
+
+        average_accuracy, average_precision, average_recall = classifier.evaluate(valid_loader=valid,
+                                                                                  network=model)
+
+        eval_info = {'accuracy': average_accuracy, 'precision': average_precision, 'recall': average_recall}
+        info['eval_info'] = eval_info
+
+        print(info)
+
         return
         # check for validation file and model (these are required
         # check for batch size - if none, set default
