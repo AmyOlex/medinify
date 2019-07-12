@@ -752,7 +752,7 @@ class ReviewClassifier:
 
         param_grid = [
             {'n_estimators': estimators, 'criterion': criterion, 'max_depth': max_depth,
-             'bootstrap': bootstrap, 'max_feature': max_features}
+             'bootstrap': bootstrap, 'max_features': max_features}
         ]
 
         grid = GridSearchCV(estimator=RandomForestClassifier(), param_grid=param_grid, cv=2, verbose=2)
