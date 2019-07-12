@@ -16,10 +16,15 @@ def main():
     # review_classifier.evaluate_average_accuracy('citalopram-reviews.csv')
     # review_classifier.classify('neutral.txt')
 
-    input_file = sys.argv[1]
+    if sys.argv[1] == 'svm':
+        sent = ReviewClassifier('svm')
+        data, target = sent.preprocess('data/common_drugs.csv')
+        sent.optimize_svm(data, target)
 
-    sent = CNNReviewClassifier('examples/word2vec.model')
-    sent.evaluate_k_fold(input_file=input_file, num_folds=5, num_epochs=10)
+    elif sys.argv[1] == 'rf':
+        sent = ReviewClassifier('rf')
+        data, target = sent.preprocess('data/common_drugs.csv')
+        sent.optimize_rf(data, target)
 
 if __name__ == "__main__":
     main()

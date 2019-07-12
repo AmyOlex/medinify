@@ -20,6 +20,7 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import GridSearchCV
 
 # NN (Currently Unused)
 from keras.models import Sequential
@@ -725,4 +726,37 @@ class ReviewClassifier:
             info['f1_5'] = 2 * ((precision5 * recall5) / (precision5 + recall5))
 
         return info
+
+    def optimize_svm(self, data, target):
+
+        cs = [0.001, 0.01, 0.1, 1, 10]
+        gammas = [0.001, 0.01, 0.1, 1]
+
+        param_grid = [
+            {'C': cs, 'kernel': 'linear'},
+            {'C': cs, 'gamma': gammas, 'kernel': 'rbf'}
+        ]
+
+        grid = GridSearchCV(estimator=svm.SVC(), param_grid=param_grid, cv=2, verbose=2)
+        grid.fit(data, target)
+        print(grid.best_params_)
+        print(grid.best_score_)
+
+    def optimize_rf(self, data, target):
+
+        estimators = [10, 100, 500, 1000]
+        criterion = ['gini', 'entropy']
+        max_depth = [3, None]
+        bootstrap = [True, False]
+        max_features = ['auto', 'sqrt']
+
+        param_grid = [
+            {'n_estimators': estimators, 'criterion': criterion, 'max_depth': max_depth,
+             'bootstrap': bootstrap, 'max_feature': max_features}
+        ]
+
+        grid = GridSearchCV(estimator=RandomForestClassifier(), param_grid=param_grid, cv=2, verbose=2)
+        grid.fit(data, target)
+        print(grid.best_params_)
+        print(grid.best_score_)
 
