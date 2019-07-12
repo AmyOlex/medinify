@@ -733,8 +733,8 @@ class ReviewClassifier:
         gammas = [0.001, 0.01, 0.1, 1]
 
         param_grid = [
-            {'C': cs, 'kernel': 'linear'},
-            {'C': cs, 'gamma': gammas, 'kernel': 'rbf'}
+            {'C': cs, 'kernel': ['linear']},
+            {'C': cs, 'gamma': gammas, 'kernel': ['rbf']}
         ]
 
         grid = GridSearchCV(estimator=svm.SVC(), param_grid=param_grid, cv=2, verbose=2)
