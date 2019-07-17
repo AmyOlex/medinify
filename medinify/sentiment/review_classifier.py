@@ -780,7 +780,7 @@ class ReviewClassifier:
         train_data = [data[x] for x in train_indices]
         train_target = [target[x] for x in train_indices]
         test_data = [data[x] for x in test_indices]
-        test_target = [data[x] for x in test_indices]
+        test_target = [target[x] for x in test_indices]
 
         for i, params in enumerate(combos):
 
@@ -792,7 +792,7 @@ class ReviewClassifier:
                                          bootstrap=params[3],
                                          max_features=params[4])
             clf.fit(train_data, train_target)
-            preds = clf.predict(test_data).astype(int)
+            preds = clf.predict(test_data)
             accuracy = accuracy_score(test_target, preds)
             print('Accuracy: {}%'.format(accuracy * 100))
             elapsed = (time.time() - start_time) / 60
