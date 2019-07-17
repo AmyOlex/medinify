@@ -25,8 +25,7 @@ def main():
 
     elif sys.argv[1] == 'rf':
         sent = ReviewClassifier('rf')
-        data, target = sent.preprocess('data/common_drugs.csv')
-        sent.optimize_rf(data, target)
+        sent.optimize_rf()
 
 if __name__ == "__main__":
     main()

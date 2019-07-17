@@ -3,6 +3,9 @@
 import pickle
 import tarfile
 import os
+import string
+import itertools
+import time
 
 # Preprocessings
 import numpy as np
@@ -11,6 +14,7 @@ import spacy
 from sklearn.preprocessing import LabelEncoder
 from nltk.corpus import stopwords
 from sklearn.feature_extraction import DictVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
 
 # Classification
 from sklearn import svm
@@ -19,8 +23,8 @@ from sklearn import svm
 from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import confusion_matrix
-from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix, accuracy_score
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 # NN (Currently Unused)
 from keras.models import Sequential
@@ -33,23 +37,17 @@ class ReviewClassifier:
     This class is used for the training and evaluation of supervised machine learning classifiers,
     currently including Multinomial Naive Bayes, Random Forest, and Support Vector Machine (all
     implemented using the SciKit Learn library) for the sentiment analysis of online drug reviews
-
     Attributes:
-
         classifier_type: str
             acronym for the type of machine learning algorithm used
             ('nb' - Multinomial Naive Bayes, 'rf' - Random Forest, 'svm' - Support Vector Machine)
-
         model: MultinomialNaiveBayes, RandomForestClassifier, or LinearSVC (depending on classifier type)
             an instance's trained or training classification model
-
         negative_threshold: float
             star-rating cutoff at with anything <= is labelled negative (default 2.0)
-
         positive_threshold: float
             star-rating cutoff at with anything >= is labelled positive (default 4.0)
-
-        vectorizer: CountVectorizer or TfidfVectorizer
+        vectorizer: DictVectorizer
             object for turning dictionary of tokens into numerical representation (vector)
     """
 
@@ -67,8 +65,6 @@ class ReviewClassifier:
         :param classifier_type: SciKit Learn supervised machine-learning classifier ('nb', 'svm', or 'rf')
         :param negative_threshold: star-rating cutoff at with anything <= is labelled negative (default 2.0)
         :param positive_threshold: star-rating cutoff at with anything >= is labelled positive (default 4.0)
-        :param use_tfidf: whether or not to set vectorizer to TF-IDF vectorizer (vectorizer
-            is default CountVectorizer)
         """
 
         self.classifier_type = classifier_type
@@ -80,13 +76,12 @@ class ReviewClassifier:
         if positive_threshold:
             self.positive_threshold = positive_threshold
 
-    def preprocess(self, reviews_filename):
+    def preprocess(self, reviews_filename, count=False):
         """
         Transforms reviews (comments and ratings) into numerical representations (vectors)
         Comments are vectorized into bag-of-words representation
         Ratings are transformed into 0's (negative) and 1's (positive)
         Neutral reviews are discarded
-
         :param reviews_filename: CSV file with comments and ratings
         :return:
         data: list of sparse matrices
@@ -105,34 +100,52 @@ class ReviewClassifier:
 
             if type(review.comment) == float:
                 continue
-            comment = {token.text: True for token in sp.tokenizer(review.comment.lower()) if token.text
-                       not in stop_words}
 
-            if self.numclasses == 2:
-                rating = 'pos'
+            if not count:
+                comment = {token.text: True for token in sp.tokenizer(review.comment.lower()) if token.text
+                           not in stop_words and not token.is_punct and not token.is_space}
+
+                if self.numclasses == 2:
+                    rating = 'pos'
+                    if review.rating == 3:
+                        continue
+                    if review.rating in [1, 2]:
+                        rating = 'neg'
+                    raw_data.append(comment)
+                    raw_target.append(rating)
+
+                elif self.numclasses == 3:
+                    rating = 'neg'
+                    if review.rating == 3:
+                        rating = 'neut'
+                    elif review.rating in [4, 5]:
+                        rating = 'pos'
+                    raw_data.append(comment)
+                    raw_target.append(rating)
+
+                elif self.numclasses == 5:
+                    raw_target.append(review.rating)
+                    raw_data.append(comment)
+
+            else:
+
                 if review.rating == 3:
                     continue
+                comment = ' '.join([token.text for token in sp.tokenizer(review.comment) if token.text
+                                    not in stop_words and not token.is_punct and not token.is_space])
+                rating = 'pos'
                 if review.rating in [1, 2]:
                     rating = 'neg'
                 raw_data.append(comment)
                 raw_target.append(rating)
 
-            elif self.numclasses == 3:
-                rating = 'neg'
-                if review.rating == 3:
-                    rating = 'neut'
-                elif review.rating in [4, 5]:
-                    rating = 'pos'
-                raw_data.append(comment)
-                raw_target.append(rating)
-
-            elif self.numclasses == 5:
-                raw_target.append(review.rating)
-                raw_data.append(comment)
-
         encoder = LabelEncoder()
         target = np.asarray(encoder.fit_transform(raw_target))
-        data = self.vectorizer.fit_transform(raw_data)
+
+        if not count:
+            data = self.vectorizer.fit_transform(raw_data)
+        else:
+            data = np.asarray([x.todense() for x in CountVectorizer().fit_transform(raw_data)]).squeeze(1)
 
         return data, target
 
@@ -168,7 +181,6 @@ class ReviewClassifier:
 
     def evaluate_accuracy(self, data, target, model=None):
         """Evaluate accuracy of current model on new data
-
         Args:
             data: vectorized comments for feed into model
             target: actual ratings assosiated with data
@@ -233,19 +245,18 @@ class ReviewClassifier:
 
         return results
 
-    def evaluate_average_accuracy(self, reviews_filename, n_folds, verbose=False):
+    def evaluate_average_accuracy(self, reviews_filename, n_folds, count=False):
         """ Use stratified k fold to calculate average accuracy of models
-
         Args:
             reviews_filename: Filename of CSV with reviews to train on
             n_folds: int, number of k-folds
-            verbose: Whether or not to print evaluation metrics to console
         """
 
-        data, target = self.preprocess(reviews_filename=reviews_filename)
+        data, target = self.preprocess(reviews_filename=reviews_filename, count=count)
         splits = StratifiedKFold(n_splits=n_folds)
 
-        sumtn, sumfp, sumfn, sumtp = 0, 0, 0, 0
+        """
+        total_tn, total_fp, sumfn, sumtp = 0, 0, 0, 0
         accuracies, class_1_precisions, class_1_recalls, class_1_f1s = [], [], [], []
         class_2_precisions, class_2_recalls, class_2_f1s = [], [], []
         class_3_precisions, class_3_recalls, class_3_f1s = [], [], []
@@ -255,83 +266,95 @@ class ReviewClassifier:
             sumtpFiveStar = sumfAB = sumfAC = sumfAD = sumfAE = sumfBA = sumfBC = sumfBD = sumfBE = \
             sumfCA = sumfCB = sumfCD = sumfCE = sumfDA = sumfDB = sumfDC = sumfDE = sumfEA = sumfEB = \
             sumfEC = sumfED = 0
+        """
 
         for train, test in splits.split(data, target):
 
-            x_train = data[train]
-            y_train = target[train]
-            x_test = data[test]
-            y_test = target[test]
+            x_train = np.array([data[x] for x in train])
+            y_train = np.array([target[x] for x in train])
+            x_test = np.array([data[x] for x in test])
+            y_test = np.array([target[x] for x in test])
+
+            print(x_train.shape)
 
             model = self.generate_model()
             model.fit(x_train, y_train)
-            results = self.evaluate_accuracy(x_test, y_test, model=model)
+            preds = model.predict(x_test)
+            matrix = confusion_matrix(y_test, preds)
+            accuracy = accuracy_score(y_test, preds)
+            tp, tn, fp, fn = matrix[1][1], matrix[0][0], matrix[0][1], matrix[1][0]
+            pos_precision = (tp * 1.0) / (tp + fp)
+            pos_recall = (tp * 1.0) / (tp + fn)
+            neg_precision = (tn * 1.0) / (tn + fn)
+            neg_recall = (tn * 1.0) / (tn + fp)
+            print('Fold Metrics:')
+            print('Accuracy: {}%'.format(accuracy * 100))
+            print('Positive Precision: {}%'.format(pos_precision * 100))
+            print('Positive Recall: {}%'.format(pos_recall * 100))
+            print('Negative Precision: {}%'.format(neg_precision * 100))
+            print('Negative Recall: {}%'.format(neg_recall * 100))
 
-            accuracies.append(results['accuracy'])
-            class_1_precisions.append(results['precision1'])
-            class_2_precisions.append(results['precision2'])
-            class_1_recalls.append(results['recall1'])
-            class_2_recalls.append(results['recall2'])
-            class_1_f1s.append(results['f1_1'])
-            class_2_f1s.append(results['f1_2'])
-
-            if self.numclasses == 2:
-                sumtn += results['tn']
-                sumfn += results['fn']
-                sumfp += results['fp']
-                sumtp += results['tp']
-
-            if self.numclasses == 3:
-                sumtpPos += results['tp_pos']
-                sumtpNeg += results['tp_neg']
-                sumtpNeu += results['tp_neut']
-                sumfBA += results['f_ba']
-                sumfBC += results['f_bc']
-                sumfAB += results['f_ab']
-                sumfCB += results['f_cb']
-                sumfCA += results['f_ca']
-                sumfAC += results['f_ac']
-
-            if self.numclasses == 5:
-                sumtpOneStar += results['tp_one']
-                sumtpTwoStar += results['tp_two']
-                sumtpThreeStar += results['tp_three']
-                sumtpFourStar += results['tp_four']
-                sumtpFiveStar += results['tp_five']
-                sumfAB += results['f_ab']
-                sumfAC += results['f_ac']
-                sumfAD += results['f_ad']
-                sumfAE += results['f_ae']
-                sumfBA += results['f_ba']
-                sumfBC += results['f_bc']
-                sumfBD += results['f_bd']
-                sumfBE += results['f_be']
-                sumfCA += results['f_ca']
-                sumfCB += results['f_cb']
-                sumfCD += results['f_cd']
-                sumfCE += results['f_ce']
-                sumfDA += results['f_da']
-                sumfDB += results['f_db']
-                sumfDC += results['f_dc']
-                sumfDE += results['f_de']
-                sumfEA += results['f_ea']
-                sumfEB += results['f_eb']
-                sumfEC += results['f_ec']
-                sumfED += results['f_ed']
-
-            if self.numclasses == 3 or self.numclasses == 5:
-                class_3_precisions.append(results['precision3'])
-                class_3_recalls.append(results['recall3'])
-                class_3_f1s.append(results['f1_3'])
-
-            if self.numclasses == 5:
-                class_4_precisions.append(results['precision4'])
-                class_4_recalls.append(results['recall4'])
-                class_4_f1s.append(results['f1_4'])
-                class_5_precisions.append(results['precision5'])
-                class_5_recalls.append(results['recall5'])
-                class_5_f1s.append(results['f1_5'])
-
+        """
+        results = self.evaluate_accuracy(x_test, y_test, model=model)
+        accuracies.append(results['accuracy'])
+        class_1_precisions.append(results['precision1'])
+        class_2_precisions.append(results['precision2'])
+        class_1_recalls.append(results['recall1'])
+        class_2_recalls.append(results['recall2'])
+        class_1_f1s.append(results['f1_1'])
+        class_2_f1s.append(results['f1_2'])
+        if self.numclasses == 2:
+            total_tn += results['tn']
+            sumfn += results['fn']
+            total_fp += results['fp']
+            sumtp += results['tp']
+        if self.numclasses == 3:
+            sumtpPos += results['tp_pos']
+            sumtpNeg += results['tp_neg']
+            sumtpNeu += results['tp_neut']
+            sumfBA += results['f_ba']
+            sumfBC += results['f_bc']
+            sumfAB += results['f_ab']
+            sumfCB += results['f_cb']
+            sumfCA += results['f_ca']
+            sumfAC += results['f_ac']
+        if self.numclasses == 5:
+            sumtpOneStar += results['tp_one']
+            sumtpTwoStar += results['tp_two']
+            sumtpThreeStar += results['tp_three']
+            sumtpFourStar += results['tp_four']
+            sumtpFiveStar += results['tp_five']
+            sumfAB += results['f_ab']
+            sumfAC += results['f_ac']
+            sumfAD += results['f_ad']
+            sumfAE += results['f_ae']
+            sumfBA += results['f_ba']
+            sumfBC += results['f_bc']
+            sumfBD += results['f_bd']
+            sumfBE += results['f_be']
+            sumfCA += results['f_ca']
+            sumfCB += results['f_cb']
+            sumfCD += results['f_cd']
+            sumfCE += results['f_ce']
+            sumfDA += results['f_da']
+            sumfDB += results['f_db']
+            sumfDC += results['f_dc']
+            sumfDE += results['f_de']
+            sumfEA += results['f_ea']
+            sumfEB += results['f_eb']
+            sumfEC += results['f_ec']
+            sumfED += results['f_ed']
+        if self.numclasses == 3 or self.numclasses == 5:
+            class_3_precisions.append(results['precision3'])
+            class_3_recalls.append(results['recall3'])
+            class_3_f1s.append(results['f1_3'])
+        if self.numclasses == 5:
+            class_4_precisions.append(results['precision4'])
+            class_4_recalls.append(results['recall4'])
+            class_4_f1s.append(results['f1_4'])
+            class_5_precisions.append(results['precision5'])
+            class_5_recalls.append(results['recall5'])
+            class_5_f1s.append(results['f1_5'])
         average_accuracy = np.mean(np.array(accuracies)) * 100
         accuracy_std = np.std(np.array(accuracies)) * 100
         average_precision1 = np.mean(np.array(class_1_precisions)) * 100
@@ -346,7 +369,6 @@ class ReviewClassifier:
         f1_1_std = np.std(np.array(class_1_f1s)) * 100
         average_f1_2 = np.mean(np.array(class_2_f1s)) * 100
         f1_2_std = np.std(np.array(class_2_f1s)) * 100
-
         if self.numclasses == 3 or self.numclasses == 5:
             average_precision3 = np.mean(np.array(class_3_precisions)) * 100
             precision3_std = np.std(np.array(class_3_precisions)) * 100
@@ -354,7 +376,6 @@ class ReviewClassifier:
             recall3_std = np.std(np.array(class_3_recalls)) * 100
             average_f1_3 = np.mean(np.array(class_3_f1s)) * 100
             f1_3_std = np.std(np.array(class_3_f1s)) * 100
-
         if self.numclasses == 5:
             average_precision4 = np.mean(np.array(class_4_precisions)) * 100
             precision4_std = np.std(np.array(class_4_precisions)) * 100
@@ -368,7 +389,6 @@ class ReviewClassifier:
             recall5_std = np.std(np.array(class_5_recalls)) * 100
             average_f1_5 = np.mean(np.array(class_5_f1s)) * 100
             f1_5_std = np.std(np.array(class_5_f1s)) * 100
-
         if self.numclasses == 2:
             print('Validation Metrics:')
             print('Average Accuracy: {:.4f}% +/- {:.4f}%'.format(average_accuracy, accuracy_std))
@@ -383,9 +403,8 @@ class ReviewClassifier:
             print('Average Class 2 (Negative) F1-Score: {:.4f}% +/- {:.4f}%'.format(average_f1_2, f1_2_std))
             print('Confusion Matrix: ')
             print("\t" + "\t" + "Neg:" + "\t" + "Pos:")
-            print("Negative:" + "\t" + str(sumtn) + "\t" + str(sumfp))
+            print("Negative:" + "\t" + str(total_tn) + "\t" + str(total_fp))
             print("Positive:" + "\t" + str(sumfn) + "\t" + str(sumtp))
-
         elif self.numclasses == 3:
             print('Validation Metrics:')
             print('Average Accuracy: {:.4f}% +/- {:.4f}%'.format(average_accuracy, accuracy_std))
@@ -406,7 +425,6 @@ class ReviewClassifier:
             print("Negative:" + "\t" + str(sumtpPos) + "\t" + str(sumfAB) + "\t" + str(sumfAC))
             print("Neutral:" + "\t" + str(sumfBA) + "\t" + str(sumtpNeg) + "\t" + str(sumfBC))
             print("Positive:" + "\t" + str(sumfCA) + "\t" + str(sumfCB) + "\t" + str(sumtpNeu))
-
         elif self.numclasses == 5:
             print('Validation Metrics:')
             print('Average Accuracy: {:.4f}% +/- {:.4f}%'.format(average_accuracy, accuracy_std))
@@ -435,10 +453,10 @@ class ReviewClassifier:
             print("Three Star:" + "\t" + str(sumfCA) + "\t" + str(sumfCB) + "\t" + str(sumtpThreeStar) + "\t" + str(sumfCD) + "\t" + str(sumfCE))
             print("Four Star:" + "\t" + str(sumfDA) + "\t" + str(sumfDB) + "\t" + str(sumfDC) + "\t" + str(sumtpFourStar) + "\t" + str(sumfDE))
             print("Five Star:" + "\t" + str(sumfEA) + "\t" + str(sumfEB) + "\t" + str(sumfEC) + "\t" + str(sumfED) + "\t" + str(sumtpFiveStar))
+            """
 
     def classify(self, output_file, csv_file=None, text_file=None, evaluate=False):
         """Classifies a list of comments as positive or negative
-
         Args:
             output_file: txt file to which classification results will output
             csv_file: CSV file with comments to classify
@@ -472,7 +490,7 @@ class ReviewClassifier:
         predictions = self.model.predict(data)
 
         classifications_file = open(output_file, 'a')
-        if self.numclasses == 2: 
+        if self.numclasses == 2:
             for i, comment in enumerate(comments):
                 if predictions[i] == 1:
                     pred = 'Positive'
@@ -742,7 +760,7 @@ class ReviewClassifier:
         print(grid.best_params_)
         print(grid.best_score_)
 
-    def optimize_rf(self, data, target):
+    def optimize_rf(self):
 
         estimators = [10, 100, 500, 1000]
         criterion = ['gini', 'entropy']
@@ -750,13 +768,35 @@ class ReviewClassifier:
         bootstrap = [True, False]
         max_features = ['auto', 'sqrt']
 
-        param_grid = [
-            {'n_estimators': estimators, 'criterion': criterion, 'max_depth': max_depth,
-             'bootstrap': bootstrap, 'max_features': max_features}
-        ]
+        output = open('examples/rf_results.txt', 'a')
 
-        grid = GridSearchCV(estimator=RandomForestClassifier(), param_grid=param_grid, cv=2, verbose=2)
-        grid.fit(data, target)
-        print(grid.best_params_)
-        print(grid.best_score_)
+        combos = list(itertools.product(estimators, criterion, max_depth, bootstrap, max_features))
+
+        data, target = self.preprocess('data/common_drugs.csv', count=True)
+        skf = StratifiedKFold(n_splits=2)
+        indices = list(skf.split(data, target))[0]
+        train_indices = indices[0]
+        test_indices = indices[1]
+        train_data = [data[x] for x in train_indices]
+        train_target = [target[x] for x in train_indices]
+        test_data = [data[x] for x in test_indices]
+        test_target = [data[x] for x in test_indices]
+
+        for i, params in enumerate(combos):
+
+            print('Hyperparameters: {}'.format(params))
+            start_time = time.time()
+            clf = RandomForestClassifier(n_estimators=params[0],
+                                         criterion=params[1],
+                                         max_depth=params[2],
+                                         bootstrap=params[3],
+                                         max_features=params[4])
+            clf.fit(train_data, train_target)
+            preds = clf.predict(test_data).astype(int)
+            accuracy = accuracy_score(test_target, preds)
+            print('Accuracy: {}%'.format(accuracy * 100))
+            elapsed = (time.time() - start_time) / 60
+            print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
+            output.write('Parameters: {}\nAccuracy: {}%\n'.format(params, accuracy * 100))
+            print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(i + 1, len(combos) - (i + 1)))
 
