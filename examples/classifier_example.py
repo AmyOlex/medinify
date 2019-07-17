@@ -4,6 +4,7 @@ Examples for how to use the Medinify package
 
 from medinify.sentiment import ReviewClassifier, CNNReviewClassifier
 import sys
+from medinify.sentiment import ProcessData
 
 def main():
     """ Main function.
@@ -18,7 +19,8 @@ def main():
 
     if sys.argv[1] == 'svm':
         sent = ReviewClassifier('svm')
-        data, target = sent.preprocess('data/common_drugs.csv')
+        process = ProcessData('examples/new_spacy_w2v.model')
+        data, target = process.generate_dataset('data/common_drugs.csv')
         sent.optimize_svm(data, target)
 
     elif sys.argv[1] == 'rf':
