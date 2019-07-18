@@ -768,8 +768,6 @@ class ReviewClassifier:
         bootstrap = [True, False]
         max_features = ['auto', 'sqrt']
 
-        output = open('examples/rf_results.txt', 'a')
-
         combos = list(itertools.product(estimators, criterion, max_depth, bootstrap, max_features))
 
         data, target = self.preprocess('data/common_drugs.csv', count=True)
@@ -782,21 +780,24 @@ class ReviewClassifier:
         test_data = [data[x] for x in test_indices]
         test_target = [target[x] for x in test_indices]
 
-        for i, params in enumerate(combos):
+        with open('examples/rf_results.txt', 'a') as f:
 
-            print('Hyperparameters: {}'.format(params))
-            start_time = time.time()
-            clf = RandomForestClassifier(n_estimators=params[0],
-                                         criterion=params[1],
-                                         max_depth=params[2],
-                                         bootstrap=params[3],
-                                         max_features=params[4])
-            clf.fit(train_data, train_target)
-            preds = clf.predict(test_data)
-            accuracy = accuracy_score(test_target, preds)
-            print('Accuracy: {}%'.format(accuracy * 100))
-            elapsed = (time.time() - start_time) / 60
-            print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
-            output.write('Parameters: {}\nAccuracy: {}%\n'.format(params, accuracy * 100))
-            print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(i + 1, len(combos) - (i + 1)))
+            for i, params in enumerate(combos):
+
+                print('Hyperparameters: {}'.format(params))
+                start_time = time.time()
+                clf = RandomForestClassifier(n_estimators=params[0],
+                                             criterion=params[1],
+                                             max_depth=params[2],
+                                             bootstrap=params[3],
+                                             max_features=params[4])
+                clf.fit(train_data, train_target)
+                preds = clf.predict(test_data)
+                accuracy = accuracy_score(test_target, preds)
+                print('Accuracy: {}%'.format(accuracy * 100))
+                elapsed = (time.time() - start_time) / 60
+                print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
+                f.write('Parameters: {}\nAccuracy: {}%\nSets remaining: {}\n\n'.format(params, accuracy * 100,
+                                                                                       len(combos) - (i + 1)))
+                print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(i + 1, len(combos) - (i + 1)))
 
