@@ -24,8 +24,9 @@ def main():
         sent.optimize_svm(data, target)
 
     elif sys.argv[1] == 'rf':
+        start = int(sys.argv[2])
         sent = ReviewClassifier('rf')
-        sent.optimize_rf()
+        sent.optimize_rf(start=start)
 
 if __name__ == "__main__":
     main()

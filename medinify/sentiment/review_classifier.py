@@ -760,7 +760,7 @@ class ReviewClassifier:
         print(grid.best_params_)
         print(grid.best_score_)
 
-    def optimize_rf(self):
+    def optimize_rf(self, start=0):
 
         estimators = [10, 100, 500, 1000]
         criterion = ['gini', 'entropy']
@@ -782,7 +782,7 @@ class ReviewClassifier:
 
         with open('examples/rf_results.txt', 'a') as f:
 
-            for i, params in enumerate(combos):
+            for params in combos[start:]:
 
                 print('Hyperparameters: {}'.format(params))
                 start_time = time.time()
@@ -797,7 +797,13 @@ class ReviewClassifier:
                 print('Accuracy: {}%'.format(accuracy * 100))
                 elapsed = (time.time() - start_time) / 60
                 print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
-                f.write('Parameters: {}\nAccuracy: {}%\nSets remaining: {}\n\n'.format(params, accuracy * 100,
-                                                                                       len(combos) - (i + 1)))
-                print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(i + 1, len(combos) - (i + 1)))
+                f.write('Parameters: {}\nAccuracy: {}%\nSets remaining: {}\nStart from: {}\n\n'.format(
+                    params,
+                    accuracy * 100,
+                    len(combos) - (start + 1),
+                    start + 1))
+                print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(
+                    start + 1,
+                    len(combos) - (start + 1)))
+                start += 1
 
