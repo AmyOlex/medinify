@@ -15,6 +15,7 @@ from sklearn.preprocessing import LabelEncoder
 from nltk.corpus import stopwords
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.feature_extraction.text import CountVectorizer
+from medinify.sentiment.process import ProcessData
 
 # Classification
 from sklearn import svm
@@ -745,20 +746,51 @@ class ReviewClassifier:
 
         return info
 
-    def optimize_svm(self, data, target):
+    def optimize_svm(self, start=0):
 
         cs = [0.001, 0.01, 0.1, 1, 10]
         gammas = [0.001, 0.01, 0.1, 1]
+        linear = ['linear']
+        rbf = ['rbf']
 
-        param_grid = [
-            {'C': cs, 'kernel': ['linear']},
-            {'C': cs, 'gamma': gammas, 'kernel': ['rbf']}
-        ]
+        linears = list(itertools.product(linear, cs))
+        rbfs = list(itertools.product(rbf, cs, gammas))
+        combos = linears + rbfs
 
-        grid = GridSearchCV(estimator=svm.SVC(), param_grid=param_grid, cv=2, verbose=2)
-        grid.fit(data, target)
-        print(grid.best_params_)
-        print(grid.best_score_)
+        process = ProcessData('examples/new_spacy_w2v.model')
+        data, target = process.generate_dataset('data/common_drugs.csv')
+        skf = StratifiedKFold(n_splits=2)
+        indices = list(skf.split(data, target))[0]
+        train_indices = indices[0]
+        test_indices = indices[1]
+        train_data = [data[x] for x in train_indices]
+        train_target = [target[x] for x in train_indices]
+        test_data = [data[x] for x in test_indices]
+        test_target = [target[x] for x in test_indices]
+
+        with open('examples/svm_results.txt', 'a') as f:
+            for params in combos[start:]:
+                start_time = time.time()
+                clf = None
+                if params[0] == 'linear':
+                    clf = svm.SVC(C=params[1], kernel='linear')
+                elif params[0] == 'rbf':
+                    clf = svm.SVC(C=params[1], gamma=params[2], kernel='rbf')
+                clf.fit(train_data, train_target)
+                preds = clf.predict(test_data)
+                accuracy = accuracy_score(test_target, preds)
+                print('Accuracy: {}%'.format(accuracy * 100))
+                elapsed = (time.time() - start_time) / 60
+                print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
+                f.write('Parameters: {}\nAccuracy: {}%\nSets remaining: {}\nStart from: {}\n\n'.format(
+                    params,
+                    accuracy * 100,
+                    len(combos) - (start + 1),
+                    start + 1))
+                print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(
+                    start + 1,
+                    len(combos) - (start + 1)))
+                start += 1
 
     def optimize_rf(self, start=0):
 

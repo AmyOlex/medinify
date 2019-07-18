@@ -18,10 +18,9 @@ def main():
     # review_classifier.classify('neutral.txt')
 
     if sys.argv[1] == 'svm':
+        start = int(sys.argv[2])
         sent = ReviewClassifier('svm')
-        process = ProcessData('examples/new_spacy_w2v.model')
-        data, target = process.generate_dataset('data/common_drugs.csv')
-        sent.optimize_svm(data, target)
+        sent.optimize_svm(start=start)
 
     elif sys.argv[1] == 'rf':
         start = int(sys.argv[2])
