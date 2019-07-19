@@ -759,13 +759,13 @@ class ReviewClassifier:
         rbfs = list(itertools.product(rbf, cs, gammas))
         combos = linears + rbfs
 
-        with open('examples/train_data.pickle') as f:
+        with open('examples/train_data.pickle', 'rb') as f:
             train_data = pickle.load(f)
-        with open('examples/train_target.pickle') as f:
+        with open('examples/train_target.pickle', 'rb') as f:
             train_target = pickle.load(f)
-        with open('examples/test_data.pickle') as f:
+        with open('examples/test_data.pickle', 'rb') as f:
             test_data = pickle.load(f)
-        with open('examples/test_target.pickle') as f:
+        with open('examples/test_target.pickle', 'rb') as f:
             test_target = pickle.load(f)
 
         with open('examples/svm_results.txt', 'a') as f:
