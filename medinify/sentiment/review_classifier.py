@@ -761,15 +761,20 @@ class ReviewClassifier:
 
         with open('examples/train_data.pickle', 'rb') as f:
             train_data = pickle.load(f)
+            print('Loaded train data')
         with open('examples/train_target.pickle', 'rb') as f:
             train_target = pickle.load(f)
+            print('Loaded train target')
         with open('examples/test_data.pickle', 'rb') as f:
             test_data = pickle.load(f)
+            print('Loaded test data')
         with open('examples/test_target.pickle', 'rb') as f:
             test_target = pickle.load(f)
+            print('Loaded test target')
 
         with open('examples/svm_results.txt', 'a') as f:
             for params in combos[start:]:
+                print('Params: {}'.format(params))
                 start_time = time.time()
                 clf = None
                 if params[0] == 'linear':
