@@ -748,6 +748,8 @@ class ReviewClassifier:
 
     def optimize_svm(self, start=0):
 
+        import pickle
+
         cs = [0.001, 0.01, 0.1, 1, 10]
         gammas = [0.001, 0.01, 0.1, 1]
         linear = ['linear']
@@ -757,16 +759,14 @@ class ReviewClassifier:
         rbfs = list(itertools.product(rbf, cs, gammas))
         combos = linears + rbfs
 
-        process = ProcessData('examples/new_spacy_w2v.model')
-        data, target = process.generate_dataset('data/common_drugs.csv')
-        skf = StratifiedKFold(n_splits=2)
-        indices = list(skf.split(data, target))[0]
-        train_indices = indices[0]
-        test_indices = indices[1]
-        train_data = [data[x] for x in train_indices]
-        train_target = [target[x] for x in train_indices]
-        test_data = [data[x] for x in test_indices]
-        test_target = [target[x] for x in test_indices]
+        with open('examples/train_data.pickle') as f:
+            train_data = pickle.load(f)
+        with open('examples/train_target.pickle') as f:
+            train_target = pickle.load(f)
+        with open('examples/test_data.pickle') as f:
+            test_data = pickle.load(f)
+        with open('examples/test_target.pickle') as f:
+            test_target = pickle.load(f)
 
         with open('examples/svm_results.txt', 'a') as f:
             for params in combos[start:]:
@@ -816,13 +816,14 @@ class ReviewClassifier:
 
             for params in combos[start:]:
 
-                print('Hyperparameters: {}'.format(params))
+                print('\nHyperparameters: {}'.format(params))
                 start_time = time.time()
                 clf = RandomForestClassifier(n_estimators=params[0],
                                              criterion=params[1],
                                              max_depth=params[2],
                                              bootstrap=params[3],
                                              max_features=params[4])
+                print('Fitting model')
                 clf.fit(train_data, train_target)
                 preds = clf.predict(test_data)
                 accuracy = accuracy_score(test_target, preds)
