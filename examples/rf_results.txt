@@ -1,0 +1,180 @@
+Parameters: (10, 'gini', 3, True, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 63
+Start from: 1
+
+Parameters: (10, 'gini', 3, True, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 62
+Start from: 2
+
+Parameters: (10, 'gini', 3, False, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 61
+Start from: 3
+
+Parameters: (10, 'gini', 3, False, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 60
+Start from: 4
+
+Parameters: (10, 'gini', None, True, 'auto')
+Accuracy: 73.34274437498199%
+Sets remaining: 59
+Start from: 5
+
+Parameters: (10, 'gini', None, True, 'sqrt')
+Accuracy: 72.82417677393333%
+Sets remaining: 58
+Start from: 6
+
+Parameters: (10, 'gini', None, False, 'auto')
+Accuracy: 73.39172020396992%
+Sets remaining: 57
+Start from: 7
+
+Parameters: (10, 'gini', None, False, 'sqrt')
+Accuracy: 72.86162887845352%
+Sets remaining: 56
+Start from: 8
+
+Parameters: (10, 'entropy', 3, True, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 55
+Start from: 9
+
+Parameters: (10, 'entropy', 3, True, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 54
+Start from: 10
+
+Parameters: (10, 'entropy', 3, False, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 53
+Start from: 11
+
+Parameters: (10, 'entropy', 3, False, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 52
+Start from: 12
+
+Parameters: (10, 'entropy', None, True, 'auto')
+Accuracy: 73.27648295929244%
+Sets remaining: 51
+Start from: 13
+
+Parameters: (10, 'entropy', None, True, 'sqrt')
+Accuracy: 73.70574169571606%
+Sets remaining: 50
+Start from: 14
+
+Parameters: (10, 'entropy', None, False, 'auto')
+Accuracy: 74.31938002362364%
+Sets remaining: 49
+Start from: 15
+
+Parameters: (10, 'entropy', None, False, 'sqrt')
+Accuracy: 73.46374348189335%
+Sets remaining: 48
+Start from: 16
+
+Parameters: (100, 'gini', 3, True, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 47
+Start from: 17
+
+Parameters: (100, 'gini', 3, True, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 46
+Start from: 18
+
+Parameters: (100, 'gini', 3, False, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 45
+Start from: 19
+
+Parameters: (100, 'gini', 3, False, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 44
+Start from: 20
+A
+Parameters: (100, 'gini', None, True, 'auto')
+Accuracy: 75.78289303102763%
+Sets remaining: 43
+Start from: 21
+
+Parameters: (100, 'gini', None, True, 'sqrt')
+Accuracy: 75.81458327331394%
+Sets remaining: 42
+Start from: 22
+
+Parameters: (100, 'gini', None, False, 'auto')
+Accuracy: 76.38500763446746%
+Sets remaining: 41
+Start from: 23
+
+Parameters: (100, 'gini', None, False, 'sqrt')
+Accuracy: 75.84627351560023%
+Sets remaining: 40
+Start from: 24
+
+Parameters: (100, 'entropy', 3, True, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 39
+Start from: 25
+
+Parameters: (100, 'entropy', 3, True, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 38
+Start from: 26
+
+Parameters: (100, 'entropy', 3, False, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 37
+Start from: 27
+
+Parameters: (100, 'entropy', 3, False, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 36
+Start from: 28
+
+Parameters: (100, 'entropy', None, True, 'auto')
+Accuracy: 76.10843824724151%
+Sets remaining: 35
+Start from: 29
+
+Parameters: (100, 'entropy', None, True, 'sqrt')
+Accuracy: 75.92693958687448%
+Sets remaining: 34
+Start from: 30
+
+Parameters: (100, 'entropy', None, False, 'auto')
+Accuracy: 76.21791362968511%
+Sets remaining: 33
+Start from: 31
+
+Parameters: (100, 'entropy', None, False, 'sqrt')
+Accuracy: 76.2553657342053%
+Sets remaining: 32
+Start from: 32
+
+Parameters: (500, 'gini', 3, True, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 31
+Start from: 33
+
+Parameters: (500, 'gini', 3, True, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 30
+Start from: 34
+
+Parameters: (500, 'gini', 3, False, 'auto')
+Accuracy: 69.57160554291147%
+Sets remaining: 29
+Start from: 35
+
+Parameters: (500, 'gini', 3, False, 'sqrt')
+Accuracy: 69.57160554291147%
+Sets remaining: 28
+Start from: 36
+
