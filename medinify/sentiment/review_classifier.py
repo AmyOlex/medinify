@@ -761,15 +761,20 @@ class ReviewClassifier:
 
         with open('examples/train_data.pickle', 'rb') as f:
             train_data = pickle.load(f)
+            print('Loaded train data')
         with open('examples/train_target.pickle', 'rb') as f:
             train_target = pickle.load(f)
+            print('Loaded train target')
         with open('examples/test_data.pickle', 'rb') as f:
             test_data = pickle.load(f)
+            print('Loaded test data')
         with open('examples/test_target.pickle', 'rb') as f:
             test_target = pickle.load(f)
+            print('Loaded test target')
 
         with open('examples/svm_results.txt', 'a') as f:
             for params in combos[start:]:
+                print('Params: {}'.format(params))
                 start_time = time.time()
                 clf = None
                 if params[0] == 'linear':
@@ -792,15 +797,7 @@ class ReviewClassifier:
                     len(combos) - (start + 1)))
                 start += 1
 
-    def optimize_rf(self, start=0):
-
-        estimators = [10, 100, 500, 1000]
-        criterion = ['gini', 'entropy']
-        max_depth = [3, None]
-        bootstrap = [True, False]
-        max_features = ['auto', 'sqrt']
-
-        combos = list(itertools.product(estimators, criterion, max_depth, bootstrap, max_features))
+    def optimize_rf(self, n_estimators, criterion, max_depth, boostrap, max_features):
 
         data, target = self.preprocess('data/common_drugs.csv', count=True)
         skf = StratifiedKFold(n_splits=2)
@@ -812,31 +809,28 @@ class ReviewClassifier:
         test_data = [data[x] for x in test_indices]
         test_target = [target[x] for x in test_indices]
 
+        with open('examples/rf_data.pkl', 'wb') as f:
+            pickle.dump(train_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(train_target, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(test_data, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(test_target, f, protocol=pickle.HIGHEST_PROTOCOL)
+
+        exit()
+
         with open('examples/rf_results.txt', 'a') as f:
 
-            for params in combos[start:]:
-
-                print('\nHyperparameters: {}'.format(params))
-                start_time = time.time()
-                clf = RandomForestClassifier(n_estimators=params[0],
-                                             criterion=params[1],
-                                             max_depth=params[2],
-                                             bootstrap=params[3],
-                                             max_features=params[4])
-                print('Fitting model')
-                clf.fit(train_data, train_target)
-                preds = clf.predict(test_data)
-                accuracy = accuracy_score(test_target, preds)
-                print('Accuracy: {}%'.format(accuracy * 100))
-                elapsed = (time.time() - start_time) / 60
-                print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
-                f.write('Parameters: {}\nAccuracy: {}%\nSets remaining: {}\nStart from: {}\n\n'.format(
-                    params,
-                    accuracy * 100,
-                    len(combos) - (start + 1),
-                    start + 1))
-                print('Parameter sets trained: {}\nParameter sets remaining: {}'.format(
-                    start + 1,
-                    len(combos) - (start + 1)))
-                start += 1
+            start_time = time.time()
+            clf = RandomForestClassifier(n_estimators=n_estimators,
+                                         criterion=criterion,
+                                         max_depth=max_depth,
+                                         bootstrap=boostrap,
+                                         max_features=max_features)
+            print('Fitting model')
+            clf.fit(train_data, train_target)
+            preds = clf.predict(test_data)
+            accuracy = accuracy_score(test_target, preds)
+            print('Accuracy: {}%'.format(accuracy * 100))
+            elapsed = (time.time() - start_time) / 60
+            print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
+            f.write('Accuracy: {}%\n'.format(accuracy * 100))
 
