@@ -820,5 +820,6 @@ class ReviewClassifier:
             print('Accuracy: {}%'.format(accuracy * 100))
             elapsed = (time.time() - start_time) / 60
             print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
+            f.write('\nParameters: (n_estimators: {}, criterion: {}, max_depth: {}, bootstrap: {}, max_features: {})\n'.format(n_estimators, criterion, max_depth, boostrap, max_features))
             f.write('Accuracy: {}%\n'.format(accuracy * 100))
 
