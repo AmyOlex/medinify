@@ -797,7 +797,7 @@ class ReviewClassifier:
                     len(combos) - (start + 1)))
                 start += 1
 
-    def optimize_rf(self, n_estimators, criterion, max_depth, boostrap, max_features):
+    def optimize_rf(self): # n_estimators, criterion, max_depth, boostrap, max_features):
 
         data, target = self.preprocess('data/common_drugs.csv', count=True)
         skf = StratifiedKFold(n_splits=2)
@@ -815,11 +815,11 @@ class ReviewClassifier:
             pickle.dump(test_data, f, protocol=pickle.HIGHEST_PROTOCOL)
             pickle.dump(test_target, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        exit()
 
         with open('examples/rf_results.txt', 'a') as f:
 
             start_time = time.time()
+            """
             clf = RandomForestClassifier(n_estimators=n_estimators,
                                          criterion=criterion,
                                          max_depth=max_depth,
@@ -833,4 +833,5 @@ class ReviewClassifier:
             elapsed = (time.time() - start_time) / 60
             print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
             f.write('Accuracy: {}%\n'.format(accuracy * 100))
+            """
 
