@@ -1,0 +1,125 @@
+Parameters: ('linear', 1.001)
+Accuracy: 73.52126493161752%
+Sets remaining: 24
+Start from: 1
+
+Parameters: ('linear', 0.01)
+Accuracy: 75.93340642853022%
+Sets remaining: 23
+Start from: 2
+
+Parameters: ('linear', 0.1)
+Accuracy: 76.12672398868948%
+Sets remaining: 22
+Start from: 3
+
+Parameters: ('linear', 1)
+Accuracy: 76.15557735587744%
+Sets remaining: 21
+Start from: 4
+
+Parameters: ('linear', 10)
+Accuracy: 76.13537999884586%
+Sets remaining: 20
+Start from: 5
+
+Parameters: ('rbf', 0.001, 0.001)
+Accuracy: 69.57700963702464%
+Sets remaining: 19
+Start from: 6
+
+Parameters: ('rbf', 0.001, 0.01)
+Accuracy: 69.57700963702464%
+Sets remaining: 18
+Start from: 7
+
+Parameters: ('rbf', 0.001, 0.1)
+Accuracy: 69.57700963702464%
+Sets remaining: 17
+Start from: 8
+
+Parameters: ('rbf', 0.001, 1)
+Accuracy: 69.57700963702464%
+Sets remaining: 16
+Start from: 9
+
+Parameters: ('rbf', 0.01, 0.001)
+Accuracy: 69.57700963702464%
+Sets remaining: 15
+Start from: 10
+
+Parameters: ('rbf', 0.01, 0.01)
+Accuracy: 69.57700963702464%
+Sets remaining: 14
+Start from: 11
+
+Parameters: ('rbf', 0.01, 0.1)
+Accuracy: 69.59432165733742%
+Sets remaining: 13
+Start from: 12
+
+Parameters: ('rbf', 0.01, 1)
+Accuracy: 69.57700963702464%
+Sets remaining: 12
+Start from: 13
+
+Parameters: ('rbf', 0.1, 0.001)
+Accuracy: 69.80495123780945%
+Sets remaining: 11
+Start from: 14
+
+Parameters: ('rbf', 0.1, 0.01)
+Accuracy: 75.69392348087021%
+Sets remaining: 10
+Start from: 15
+
+Parameters: ('rbf', 0.1, 0.1)
+Accuracy: 74.68694096601072%
+Sets remaining: 9
+Start from: 16
+
+Parameters: ('rbf', 0.1, 1)
+Accuracy: 69.62894569796295%
+Sets remaining: 8
+Start from: 17
+
+Parameters: ('rbf', 1, 0.001)
+Accuracy: 74.83697847538808%
+Sets remaining: 7
+Start from: 18
+
+Parameters: ('rbf', 1, 0.01)
+Accuracy: 77.51168561371112%
+Sets remaining: 6
+Start from: 19
+
+Parameters: ('rbf', 1, 0.1)
+Accuracy: 77.51168561371112%
+Sets remaining: 5
+Start from: 20
+
+Parameters: ('rbf', 1, 1)
+Accuracy: 69.88574066593571%
+Sets remaining: 4
+Start from: 21
+
+Parameters: ('rbf', 10, 0.001)
+Accuracy: 76.48450574182007%
+Sets remaining: 3
+Start from: 22
+
+Parameters: ('rbf', 10, 0.01)
+Accuracy: 77.78290726527786%
+Sets remaining: 2
+Start from: 23
+
+Parameters: ('rbf', 10, 0.1)
+Accuracy: 75.5871660222748%
+Sets remaining: 1
+Start from: 24
+
+Parameters: ('rbf', 10, 1)
+Accuracy: 70.02423682843788%
+Sets remaining: 0
+Start from: 25
+
