@@ -23,8 +23,15 @@ def main():
         sent.optimize_svm(start=start)
 
     elif sys.argv[1] == 'rf':
+        n_estimators = int(sys.argv[2])
+        criterion = sys.argv[3]
+        boostrap = bool(sys.argv[4])
+        max_features = sys.argv[5]
+        max_depth = None
+        if len(sys.argv) == 7:
+            max_depth = sys.argv[6]
         sent = ReviewClassifier('rf')
-        sent.optimize_rf()
+        sent.optimize_rf(n_estimators, criterion, max_depth, boostrap, max_features)
 
 if __name__ == "__main__":
     main()
