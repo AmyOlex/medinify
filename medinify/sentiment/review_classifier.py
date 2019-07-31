@@ -805,6 +805,20 @@ class ReviewClassifier:
             test_data = pickle.load(f)
             test_target = pickle.load(f)
 
+        new_train_data, new_train_target, new_test_data, new_test_target = None, None, None, None
+
+        sfk = StratifiedKFold(n_splits=2)
+        for train, test in sfk.split(train_data, train_target):
+            new_train_data = [train_data[x] for x in train]
+            new_train_target = [train_target[x] for x in train]
+            new_test_data = [train_data[x] for x in test]
+            new_test_target = [train_target[x] for x in test]
+
+        print(len(train_data), len(train_target))
+        print(len(new_train_data), len(new_train_target), len(new_test_data), len(new_test_target))
+
+        exit()
+
         with open('examples/rf_results.txt', 'a') as f:
 
             start_time = time.time()
