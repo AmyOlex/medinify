@@ -814,11 +814,6 @@ class ReviewClassifier:
             new_test_data = [train_data[x] for x in test]
             new_test_target = [train_target[x] for x in test]
 
-        print(len(train_data), len(train_target))
-        print(len(new_train_data), len(new_train_target), len(new_test_data), len(new_test_target))
-
-        exit()
-
         with open('examples/rf_results.txt', 'a') as f:
 
             start_time = time.time()
@@ -828,9 +823,9 @@ class ReviewClassifier:
                                          bootstrap=boostrap,
                                          max_features=max_features)
             print('Fitting model')
-            clf.fit(train_data, train_target)
-            preds = clf.predict(test_data)
-            accuracy = accuracy_score(test_target, preds)
+            clf.fit(new_train_data, new_train_target)
+            preds = clf.predict(new_test_data)
+            accuracy = accuracy_score(new_test_target, preds)
             print('Accuracy: {}%'.format(accuracy * 100))
             elapsed = (time.time() - start_time) / 60
             print('Time Elapsed: {0:.2f} min.\n'.format(elapsed))
