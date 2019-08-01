@@ -29,7 +29,7 @@ def main():
         max_features = sys.argv[5]
         max_depth = None
         if len(sys.argv) == 7:
-            max_depth = sys.argv[6]
+            max_depth = int(sys.argv[6])
         sent = ReviewClassifier('rf')
         sent.optimize_rf(n_estimators, criterion, max_depth, boostrap, max_features)
 
