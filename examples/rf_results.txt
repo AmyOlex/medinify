@@ -178,3 +178,54 @@ Accuracy: 69.57160554291147%
 Sets remaining: 28
 Start from: 36
 
+
+Parameters: (n_estimators: 500, criterion: gini, max_depth: None, bootstrap: True, max_features: auto)
+Accuracy: 74.46845289541919%
+
+Parameters: (n_estimators: 500, criterion: gini, max_depth: None, bootstrap: True, max_features: sqrt)
+Accuracy: 74.29559204840103%
+
+Parameters: (n_estimators: 500, criterion: gini, max_depth: None, bootstrap: True, max_features: auto)
+Accuracy: 74.27254393546528%
+
+Parameters: (n_estimators: 500, criterion: gini, max_depth: None, bootstrap: True, max_features: sqrt)
+Accuracy: 74.40507058484587%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: 3, bootstrap: True, max_features: auto)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: 3, bootstrap: True, max_features: sqrt)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: 3, bootstrap: True, max_features: auto)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: 3, bootstrap: True, max_features: sqrt)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: None, bootstrap: True, max_features: auto)
+Accuracy: 74.52031114952463%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: None, bootstrap: True, max_features: sqrt)
+Accuracy: 74.72198213771247%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: None, bootstrap: True, max_features: auto)
+Accuracy: 74.55488331892826%
+
+Parameters: (n_estimators: 500, criterion: entropy, max_depth: None, bootstrap: True, max_features: sqrt)
+Accuracy: 74.69893402477672%
+
+Parameters: (n_estimators: 100, criterion: gini, max_depth: 3, bootstrap: True, max_features: auto)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 1000, criterion: gini, max_depth: 3, bootstrap: True, max_features: auto)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 1000, criterion: gini, max_depth: 3, bootstrap: True, max_features: sqrt)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 1000, criterion: gini, max_depth: 3, bootstrap: True, max_features: auto)
+Accuracy: 69.5707288965716%
+
+Parameters: (n_estimators: 1000, criterion: gini, max_depth: 3, bootstrap: True, max_features: sqrt)
+Accuracy: 69.5707288965716%
