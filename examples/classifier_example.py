@@ -3,8 +3,9 @@ Examples for how to use the Medinify package
 """
 
 from medinify.sentiment import Classifier
-from medinify.sentiment.cnn_review_classifier import CNNReviewClassifier
+from medinify.sentiment.cnn_review_classifier import CNNReviewClassifier, SentimentNetwork
 import sys
+import torch
 
 
 def main():
@@ -13,10 +14,16 @@ def main():
     """
 
     reviews_file = sys.argv[1]
-    rating_type = sys.argv[2]
+    throwaway = sys.argv[2]
+    rating_type = sys.argv[3]
+    output = sys.argv[4]
 
-    clf = CNNReviewClassifier('new_w2v.model')
-    clf.evaluate_k_fold(input_file=reviews_file, num_folds=10, num_epochs=20, rating_type=rating_type)
+    clf = CNNReviewClassifier('examples/new_w2v.model')
+    network = SentimentNetwork(len(clf.vectors.vectors), clf.vectors.vectors)
+    loader, other = clf.get_data_loaders(train_file=reviews_file, valid_file=throwaway,
+                                         batch_size=25, rating_type=rating_type)
+    trained_model = clf.train(network, loader, 20, evaluate=False)
+    torch.save(trained_model.state_dict(), output)
 
     """
     clf = Classifier('nb')  # 'nb', 'svm', or 'rf'
