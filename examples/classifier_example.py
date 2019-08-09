@@ -18,7 +18,7 @@ def main():
     rating_type = sys.argv[3]
     output = sys.argv[4]
 
-    clf = CNNReviewClassifier('examples/new_w2v.model')
+    clf = CNNReviewClassifier('new_w2v.model')
     network = SentimentNetwork(len(clf.vectors.vectors), clf.vectors.vectors)
     loader, other = clf.get_data_loaders(train_file=reviews_file, valid_file=throwaway,
                                          batch_size=25, rating_type=rating_type)
