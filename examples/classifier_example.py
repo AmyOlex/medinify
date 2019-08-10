@@ -15,15 +15,10 @@ def main():
 
     reviews_file = sys.argv[1]
     throwaway = sys.argv[2]
-    model_file = sys.argv[3]
-    rating_type = sys.argv[4]
+    rating_type = sys.argv[3]
 
     clf = CNNReviewClassifier('new_w2v.model')
-    trained_network = SentimentNetwork(len(clf.vectors.vectors), clf.vectors.vectors)
-    trained_network.load_state_dict(torch.load(model_file))
-    loader, other = clf.get_data_loaders(train_file=reviews_file, valid_file=throwaway,
-                                         batch_size=25, rating_type=rating_type)
-    clf.evaluate(trained_network, loader)
+    clf.evaluate_k_fold(reviews_file, 5, 20, rating_type)
 
     """
     clf = Classifier('nb')  # 'nb', 'svm', or 'rf'
