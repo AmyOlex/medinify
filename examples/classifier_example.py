@@ -14,7 +14,6 @@ def main():
     """
 
     reviews_file = sys.argv[1]
-    throwaway = sys.argv[2]
     rating_type = sys.argv[3]
 
     clf = CNNReviewClassifier('new_w2v.model')
