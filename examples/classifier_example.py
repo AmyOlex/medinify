@@ -14,7 +14,7 @@ def main():
     """
 
     reviews_file = sys.argv[1]
-    rating_type = sys.argv[3]
+    rating_type = sys.argv[2]
 
     clf = CNNReviewClassifier('new_w2v.model')
     clf.evaluate_k_fold(reviews_file, 5, 20, rating_type)
