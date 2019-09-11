@@ -18,6 +18,10 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+You may need to also install libomp:
+
+```brew install libomp```
+
 ## Datasets
 
 ### Review Datasets
